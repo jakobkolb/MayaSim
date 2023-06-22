@@ -844,7 +844,7 @@ class ModelCore(Parameters):
         adj[adj == -1] = 0
         built_links = 0
         lost_links = 0
-        g = nx.from_numpy_array(adj, create_using=nx.DiGraph())
+        g = nx.from_numpy_matrix(adj, create_using=nx.DiGraph())
         self.degree = g.out_degree()
         # cities with rank>0 are traders and establish links to neighbours
 
@@ -1676,16 +1676,17 @@ if __name__ == "__main__":
                       output_geographic_data=True,
                       output_data_location=location)
     # run Model
-    timesteps = 300
+    timesteps = 30
     model.crop_income_mode = 'sum'
     model.r_es_sum = 0.0001
     model.r_bca_sum = 0.25
     model.population_control = 'False'
     model.run(timesteps)
 
+    # plot trajectory
     trj = model.get_trajectory()
-    plot = trj[[
-        'total_population', 'total_settlements', 'total_migrangs'
-    ]].plot()
+    ax = trj[[
+        'total_population', 'total_settlements', 'total_migrants'
+        ]].plot()
     plt.show()
-    plt.savefig(plot, location + 'plot')
+    ax.figure.savefig(location + 'plot.png')
