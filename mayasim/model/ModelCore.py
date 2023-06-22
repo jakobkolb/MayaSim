@@ -844,7 +844,7 @@ class ModelCore(Parameters):
         adj[adj == -1] = 0
         built_links = 0
         lost_links = 0
-        g = nx.from_numpy_matrix(adj, create_using=nx.DiGraph())
+        g = nx.from_numpy_array(adj, create_using=nx.DiGraph())
         self.degree = g.out_degree()
         # cities with rank>0 are traders and establish links to neighbours
 
