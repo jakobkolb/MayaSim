@@ -1590,7 +1590,7 @@ class ModelCore(Parameters):
         try:
             trj = np.array(self.trajectory)
             columns = trj[0, :]
-            df = pandas.DataFrame(trj[1:, :], columns=columns)
+            df = pandas.DataFrame(trj[1:, :], columns=columns, dtype='float')
         except IOError:
             print('trajectory mode must be turned on')
 
