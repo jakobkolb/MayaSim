@@ -153,11 +153,11 @@ def run_experiment(argv):
     name = "mayasim_default_setup"
 
     estimators = {"<mean_trajectories>":
-                  lambda fnames: pd.concat([np.load(f)["trajectory"]
+                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["trajectory"]
                                             for f in
                                             fnames]).groupby(level=0).mean(),
                   "<sigma_trajectories>":
-                  lambda fnames: pd.concat([np.load(f)["trajectory"]
+                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["trajectory"]
                                             for f in
                                             fnames]).groupby(level=0).std()
                   }
