@@ -66,7 +66,7 @@ class ModelCore(Parameters):
         # Debugging settings
         self.debug = debug
 
-        # In debug mode, allways print stack for warnings and errors.
+        # In debug mode, always print stack for warnings and errors.
         def warn_with_traceback(message,
                                 category,
                                 filename,
@@ -92,7 +92,7 @@ class ModelCore(Parameters):
         # Trajectory data will be kept in one data structure to be read out, when
         # the model run finished.
 
-        if output_data_location != 0:
+        if output_data_location is not None:
 
             # remove file ending
             self.output_data_location = output_data_location.rsplit('.', 1)[0]
