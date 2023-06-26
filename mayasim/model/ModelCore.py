@@ -851,23 +851,23 @@ class ModelCore(Parameters):
                                           )))
 
                 if self.rank[city] == 3:
-                    treshold = 31. * (
+                    threshold = 31. * (
                         self.thresh_rank_3 / self.thresh_rank_3 * 0.5 + 1.)
                 elif self.rank[city] == 2:
-                    treshold = 31. * (
+                    threshold = 31. * (
                         self.thresh_rank_2 / self.thresh_rank_3 * 0.5 + 1.)
                 elif self.rank[city] == 1:
-                    treshold = 31. * (
+                    threshold = 31. * (
                         self.thresh_rank_1 / self.thresh_rank_3 * 0.5 + 1.)
                 else:
-                    treshold = 0
+                    threshold = 0
 
                 # don't chose yourself as nearest neighbor
-                distances[city] = 2 * treshold
+                distances[city] = 2 * threshold
 
                 # collect close enough neighbors and omit those that are
                 # already connected.
-                a = distances <= treshold
+                a = distances <= threshold
                 b = self.adjacency[city] == 0
                 nearby = np.array(list(map(operator.and_, a, b)))
 
@@ -886,14 +886,14 @@ class ModelCore(Parameters):
                               np.shape(self.settlement_positions[0]))
                         sys.exit(-1)
 
-            # cities who cant maintain their trade links, loose them:
+            # cities who cannot maintain their trade links lose them:
             elif self.degree[city] > self.rank[city]:
                 # get neighbors of node
                 neighbors = g.successors(city)
                 # find smallest of neighbors
                 smallest_neighbor = self.population.index(
                     min([self.population[nb] for nb in neighbors]))
-                # cut link with him
+                # cut corresponding link
                 self.adjacency[city, smallest_neighbor] = 0
                 self.adjacency[smallest_neighbor, city] = 0
                 lost_links += 1
@@ -1094,6 +1094,7 @@ class ModelCore(Parameters):
         # if they have neither population nor cropped cells.
         # this might lead to unexpected consequences. see what happenes,
         # when after adding all cities, only unique ones are kept
+        # (not a problem when self.kill_cities_without_crops=False)
 
         killed_cities = 0
 
