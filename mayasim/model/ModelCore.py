@@ -147,7 +147,7 @@ class ModelCore(Parameters):
         # Values range from 0 (bad) to 6 (good)
         self.soilprod = np.load(input_data_location + '0_RES_432x400_soil.npy')
         # it also sets soil productivity to 1.5 where the elevation is <= 1
-        self.soilprod[(self.elev <= 1) and (np.logical_not(np.isnan(self.elev)))] = 1.5
+        self.soilprod[(self.elev <= 1) & (np.logical_not(np.isnan(self.elev)))] = 1.5
         # smoothen soil productivity dataset
         self.soilprod = ndimage.gaussian_filter(self.soilprod,
                                                 sigma=(2, 2),
