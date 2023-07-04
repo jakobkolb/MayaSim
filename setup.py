@@ -25,7 +25,8 @@ setup(name="mayasim",
           "networkx",
           "pickleshare",
           "scipy",
-          "matplotlib"
+          "matplotlib", 
+          "tqdm"
 
       ],
       # see http://stackoverflow.com/questions/15869473/what-is-the-advantage-
