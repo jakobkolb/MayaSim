@@ -1631,7 +1631,10 @@ class ModelCore(Parameters):
         model.run(timesteps)
 
         trj = model.get_trajectory()
-        plot = trj.plot()
+        plot = trj[[
+            'total_population', 'total_settlements', 'total_migrants'
+            ]].plot()
+
 
         return 1
 
