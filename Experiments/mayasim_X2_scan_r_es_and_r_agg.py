@@ -209,23 +209,23 @@ def run_experiment(argv):
 
     estimators1 = {"mean_trajectories":
                       lambda fnames:
-                      pd.concat([np.load(f)["trajectory"]
+                      pd.concat([np.load(f, allow_pickle=True)["trajectory"]
                                  for f in fnames]).groupby(level=0).mean(),
                   "sigma_trajectories":
                       lambda fnames:
-                      pd.concat([np.load(f)["trajectory"]
+                      pd.concat([np.load(f, allow_pickle=True)["trajectory"]
                                  for f in fnames]).groupby(level=0).std()
                   }
     name2 = "traders_trajectory"
     estimators2 = {
                   "mean_trajectories":
                       lambda fnames:
-                      pd.concat([np.load(f)["traders trajectory"]
+                      pd.concat([np.load(f, allow_pickle=True)["traders trajectory"]
                                             for f in fnames]).groupby(
                           level=0).mean(),
                   "sigma_trajectories":
                       lambda fnames:
-                      pd.concat([np.load(f)["traders trajectory"]
+                      pd.concat([np.load(f, allow_pickle=True)["traders trajectory"]
                                             for f in fnames]).groupby(
                           level=0).std()
                   }
@@ -246,9 +246,9 @@ def run_experiment(argv):
     handle.resave(eva=estimators2, name=name2)
 
     if test:
-        data = pd.read_pickle(save_path_res + name1)
+        data = pd.read_pickle(save_path_res + name1 + '.pkl')
         print(data.head())
-        data = pd.read_pickle(save_path_res + name2)
+        data = pd.read_pickle(save_path_res + name2 + '.pkl')
         print(data.head())
 
     return 1

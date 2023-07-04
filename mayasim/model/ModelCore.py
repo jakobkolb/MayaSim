@@ -485,7 +485,7 @@ class ModelCore(Parameters):
         Ecosystem Services are calculated via a linear
         additive model from agricultural productivity (ag),
         waterflow through the cell (wf) and forest
-        state on the cell (forest) \in [1,3],
+        state on the cell (forest) in [1,3],
         The recent version of mayasim limits value of
         ecosystem services to 1 < ecoserv < 250, it also proposes
         to include population density (pop_gradient) and precipitation (rain)
@@ -520,7 +520,7 @@ class ModelCore(Parameters):
         # Benefit cost assessment
 
         return (self.max_yield *
-                (1 - self.origin_shift * np.exp(-self.slope_yield * ag_in)))
+                (1 - self.origin_shift * np.exp(np.float128(-self.slope_yield * ag_in))))
 
     def get_cells_in_influence(self):
         """
