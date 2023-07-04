@@ -15,6 +15,8 @@ import pkg_resources
 import scipy.ndimage as ndimage
 import scipy.sparse as sparse
 
+from tqdm.auto import tqdm
+
 try:
     import cPickle as pkl
 except ImportError:
@@ -1261,6 +1263,7 @@ class ModelCore(Parameters):
 
         self.init_output()
 
+        pbar = tqdm(total=t_max)
         while t <= t_max:
             t += 1
 
@@ -1302,6 +1305,10 @@ class ModelCore(Parameters):
 
             self.step_output(t, npp, wf, ag, es, bca, abandoned, sown, built,
                              lost, new_settlements, killed_settlements)
+            
+            pbar.update()
+        pbar.close()
+
 
     def init_output(self):
         """initializes data output for trajectory, settlements and geography depending on settings"""
