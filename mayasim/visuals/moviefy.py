@@ -6,7 +6,9 @@ from subprocess import call
 
 
 def moviefy(input_folder, output_folder=None, rmold=False, namelist=['image_']):
-    # type: (str, str) -> object
+    """
+    type: (str, str) -> object 
+    """
 
     framerate = 8
     if output_folder is None:
@@ -32,10 +34,10 @@ def moviefy(input_folder, output_folder=None, rmold=False, namelist=['image_']):
 
 if __name__ == '__main__':
 
-    print sys.argv
+    print(sys.argv)
 
     if len(sys.argv) < 3:
-        print 'usage is python moviefy.py [input folder] [output folder]'
+        print('usage is python moviefy.py [input folder] [output folder]')
 
     if os.path.exists(sys.argv[2]):
         if sys.argv[1] != sys.argv[2]:
