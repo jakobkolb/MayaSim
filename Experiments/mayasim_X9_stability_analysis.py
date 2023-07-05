@@ -21,6 +21,7 @@ import getpass
 import itertools as it
 import pickle as cp
 import sys
+import os
 
 import numpy as np
 import pandas as pd
@@ -38,7 +39,7 @@ def load(fname):
     If it worked, return the content. If not, return -1
     """
     try:
-        return np.load(fname)
+        return np.load(fname, allow_pickle=True)
     except OSError:
         try:
             os.remove(fname)
