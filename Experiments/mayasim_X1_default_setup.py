@@ -124,15 +124,15 @@ def run_experiment(argv):
     raw = 'raw_data/'
     res = 'results/'
 
-    if getpass.getuser() == "kolb":
-        save_path_raw = "/p/tmp/kolb/Mayasim/output_data/{}{}{}".format(
-            test_folder, experiment_folder, raw)
-        save_path_res = "/home/kolb/Mayasim/output_data/{}{}{}".format(
-            test_folder, experiment_folder, res)
-    elif getpass.getuser() == "jakob":
-        save_path_raw = "/home/jakob/Project_MayaSim/Python/" \
+    # if getpass.getuser() == "kolb":
+    #     save_path_raw = "/p/tmp/kolb/Mayasim/output_data/{}{}{}".format(
+    #         test_folder, experiment_folder, raw)
+    #     save_path_res = "/home/kolb/Mayasim/output_data/{}{}{}".format(
+    #         test_folder, experiment_folder, res)
+    if getpass.getuser() == "fritz":
+        save_path_raw = "/Users/fritz/Desktop/Thesis/MayaSim/" \
                         "output_data/{}{}{}".format(test_folder, experiment_folder, raw)
-        save_path_res = "/home/jakob/Project_MayaSim/Python/" \
+        save_path_res = "/Users/fritz/Desktop/Thesis/MayaSim/" \
                         "output_data/{}{}{}".format(test_folder, experiment_folder, res)
     else:
         save_path_res = './{}'.format(res)
