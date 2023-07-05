@@ -196,17 +196,17 @@ def run_experiment(argv):
 
     estimators1 = {"<mean_trajectories>":
                    lambda fnames:
-                   pd.concat([np.load(f)["trajectory"]
+                   pd.concat([np.load(f, allow_pickle=True)["trajectory"]
                               for f in fnames]).groupby(level=0).mean(),
                    "<sigma_trajectories>":
                    lambda fnames:
-                   pd.concat([np.load(f)["trajectory"]
+                   pd.concat([np.load(f, allow_pickle=True)["trajectory"]
                               for f in fnames]).groupby(level=0).std()
                   }
     name2 = "all_trajectories"
 
     estimators2 = {"trajectory_list":
-                   lambda fnames: [np.load(f)["trajectory"] for f in fnames]}
+                   lambda fnames: [np.load(f, allow_pickle=True)["trajectory"] for f in fnames]}
 
     def plot_function(steps=1, input_location='./', output_location='./', fnames='./'):
         print(input_location)
@@ -290,9 +290,9 @@ def run_experiment(argv):
         # handle.resave(eva=estimators1, name=name1)
         # handle.resave(eva=estimators2, name=name2)
     elif mode == 1:
-        handle.resave(eva=estimators3, name=name3, no_output=True)
+        data_generation_handle.resave(eva=estimators3, name=name3, no_output=True)
     elif mode == 2:
-        handle.resave(eva=estimators4, name=name4, no_output=True)
+        data_generation_handle.resave(eva=estimators4, name=name4, no_output=True)
 
 
     return 1

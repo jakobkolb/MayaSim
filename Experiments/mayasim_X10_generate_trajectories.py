@@ -44,7 +44,7 @@ def load(fname):
     If it worked, return the content. If not, return -1
     """
     try:
-        return np.load(fname)
+        return np.load(fname, allow_pickle=True)
     except OSError:
         try:
             os.remove(fname)
@@ -398,7 +398,7 @@ def run_experiment(test, mode, job_id, max_id):
 
         if not os.path.isdir(output_location):
             os.mkdir(output_location)
-        mp = MapPlot(t_max=steps,
+        mp = MapPlot(t_max=STEPS,
                      input_location=input_loc,
                      output_location=output_location)
 
@@ -452,7 +452,7 @@ def run_experiment(test, mode, job_id, max_id):
     name4 = "RenderMovies"
     estimators4 = {
         "render_movies":
-        lambda fnames: movie_function(steps=steps,
+        lambda fnames: movie_function(steps=STEPS,
                                       input_location=save_path_raw,
                                       output_location=save_path_res,
                                       fnames=fnames)

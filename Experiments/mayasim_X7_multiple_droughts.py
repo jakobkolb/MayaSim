@@ -203,18 +203,18 @@ def run_experiment(argv):
 
     estimators = {"<mean_trajectories>":
                   lambda fnames:
-                  pd.concat([np.load(f)["trajectory"]
+                  pd.concat([np.load(f, allow_pickle=True)["trajectory"]
                              for f in fnames]).groupby(level=0).mean(),
                   "<sigma_trajectories>":
                   lambda fnames:
-                  pd.concat([np.load(f)["trajectory"]
+                  pd.concat([np.load(f, allow_pickle=True)["trajectory"]
                              for f in fnames]).groupby(level=0).std()
                   }
 
     name2 = "all_trajectories"
 
     estimators2 = {"trajectory_list":
-                   lambda fnames: [np.load(f)["trajectory"] for f in fnames]}
+                   lambda fnames: [np.load(f, allow_pickle=True)["trajectory"] for f in fnames]}
     # Run computation and post processing.
 
     handle = eh(sample_size=sample_size,

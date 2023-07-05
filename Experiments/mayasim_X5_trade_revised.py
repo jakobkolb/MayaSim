@@ -151,11 +151,11 @@ def run_experiment(argv):
 
     name1 = "trajectory"
     estimators1 = {"mean_trajectories":
-                  lambda fnames: pd.concat([np.load(f)["trajectory"]
+                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["trajectory"]
                                             for f in fnames]).groupby(
                       level=0).mean(),
                   "sigma_trajectories":
-                  lambda fnames: pd.concat([np.load(f)["trajectory"]
+                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["trajectory"]
                                             for f in fnames]).groupby(
                           level=0).std()
                   }
@@ -163,12 +163,12 @@ def run_experiment(argv):
     estimators2 = {
                   "mean_trajectories":
                       lambda fnames:
-                      pd.concat([np.load(f)["traders trajectory"]
+                      pd.concat([np.load(f, allow_pickle=True)["traders trajectory"]
                                             for f in fnames]).groupby(
                           level=0).mean(),
                   "sigma_trajectories":
                       lambda fnames:
-                      pd.concat([np.load(f)["traders trajectory"]
+                      pd.concat([np.load(f, allow_pickle=True)["traders trajectory"]
                                             for f in fnames]).groupby(
                           level=0).std()
                   }
