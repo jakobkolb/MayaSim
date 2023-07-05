@@ -1263,7 +1263,10 @@ class ModelCore(Parameters):
 
         self.init_output()
 
-        pbar = tqdm(total=t_max)
+        # initialize progress bar
+        if not self.debug:
+            pbar = tqdm(total=t_max)
+        
         while t <= t_max:
             t += 1
 
@@ -1306,8 +1309,13 @@ class ModelCore(Parameters):
             self.step_output(t, npp, wf, ag, es, bca, abandoned, sown, built,
                              lost, new_settlements, killed_settlements)
             
-            pbar.update()
-        pbar.close()
+            # update progress bar
+            if not self.debug:
+                pbar.update()
+
+        # close progress bar
+        if not self.debug:
+            pbar.close()
 
 
     def init_output(self):
