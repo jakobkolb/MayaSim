@@ -1234,26 +1234,16 @@ class ModelCore(Parameters):
             number of steps to integrate the model
         """
 
-        # initialize time step
-        t = 0
-
         # print update about output state
-
-        if self.debug:
-            print('output of settlement and geodata is {} and {}'.format(
-                self.output_settlement_data, self.output_geographic_data))
+        #if self.debug:
+        #    print('output of settlement and geodata is {} and {}'.format(
+        #        self.output_settlement_data, self.output_geographic_data))
 
         # initialize variables
         # net primary productivity
         npp = np.zeros((self.rows, self.columns))
         # water flow
-
-        if self.debug and t == 0:
-            wf = np.zeros((self.rows, self.columns))
-        elif not self.debug:
-            wf = np.zeros((self.rows, self.columns))
-        else:
-            pass
+        wf = np.zeros((self.rows, self.columns))
         # agricultural productivity
         ag = np.zeros((self.rows, self.columns))
         # ecosystem services
@@ -1262,16 +1252,11 @@ class ModelCore(Parameters):
         bca = np.zeros((self.rows, self.columns))
 
         self.init_output()
-
-        # initialize progress bar
-        if not self.debug:
-            pbar = tqdm(total=t_max)
         
-        while t <= t_max:
-            t += 1
+        for t in tqdm(range(1,t_max+1)):
 
-            if self.debug:
-                print(f"time = {t}, population = {sum(self.population)}")
+            #if self.debug:
+            #    print(f"time = {t}, population = {sum(self.population)}")
 
             # evolve subselfs
             # ecosystem
@@ -1308,14 +1293,6 @@ class ModelCore(Parameters):
 
             self.step_output(t, npp, wf, ag, es, bca, abandoned, sown, built,
                              lost, new_settlements, killed_settlements)
-            
-            # update progress bar
-            if not self.debug:
-                pbar.update()
-
-        # close progress bar
-        if not self.debug:
-            pbar.close()
 
 
     def init_output(self):
