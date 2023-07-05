@@ -207,9 +207,9 @@ def run_experiment(argv):
     h.resave(eva=estimators2, name=name2)
 
     if test:
-        data = pd.read_pickle(save_path_res + name1)
+        data = pd.read_pickle(save_path_res + name1 + '.pkl')
         print(data.head())
-        data = pd.read_pickle(save_path_res + name2)
+        data = pd.read_pickle(save_path_res + name2 + '.pkl')
         print(data.head())
         print(save_path_res)
 
