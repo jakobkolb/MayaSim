@@ -395,7 +395,7 @@ class ModelCore(Parameters):
         npp_mean = np.nanmean(npp)
         # Iterate over all cells repeatedly and regenerate or degenerate
 
-        for repeat in range(4):
+        for _ in range(4):
             # vectorized random number generation for use in 'Degradation'
             degradation_fortune = np.random.random(len(self.list_of_land_patches))
 
