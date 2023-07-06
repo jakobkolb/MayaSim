@@ -15,7 +15,7 @@ import pkg_resources
 import scipy.ndimage as ndimage
 import scipy.sparse as sparse
 
-from tqdm.auto import tqdm
+from tqdm.auto import trange
 
 try:
     import cPickle as pkl
@@ -164,7 +164,6 @@ class ModelCore(Parameters):
         # dimensions of the map
         self.rows, self.columns = self.precip.shape
         self.height, self.width = 914., 840.  # height and width in km
-        self.pixel_dim = self.width / self.columns
         self.cell_width = self.width / self.columns
         self.cell_height = self.height / self.rows
         self.land_patches = np.asarray(np.where(np.isfinite(self.elev)))
@@ -397,19 +396,23 @@ class ModelCore(Parameters):
         # Iterate over all cells repeatedly and regenerate or degenerate
 
         for repeat in range(4):
-            for i in self.list_of_land_patches:
+            # vectorized random number generation for use in 'Degradation'
+            degradation_fortune = np.random.random(len(self.list_of_land_patches))
+
+            for n, i in enumerate(self.list_of_land_patches):
                 if not np.isnan(self.elev[i]):
                     # Forest regenerates faster [slower] (linearly),
                     # if net primary productivity on the patch
                     # is above [below] average.
                     threshold = npp_mean / npp[i]
+
                     # Degradation:
                     # Decrement with probability 0.003
                     # if there is a settlement around,
                     # degrade with higher probability
                     probdec = self.natprobdec * (2 * self.pop_gradient[i] + 1)
 
-                    if np.random.random() <= probdec:
+                    if degradation_fortune[n] <= probdec:
                         if self.forest_state[i] == 3:
                             self.forest_state[i] = 2
                             self.forest_memory[i] = self.state_change_s2
@@ -417,9 +420,8 @@ class ModelCore(Parameters):
                             self.forest_state[i] = 1
                             self.forest_memory[i] = 0
 
-                    # Regeneration:"
+                    # Regeneration
                     # recover if tree = 1 and memory > threshold 1
-
                     if (self.forest_state[i] == 1 and self.forest_memory[i] >
                             self.state_change_s2 * threshold):
                         self.forest_state[i] = 2
@@ -427,13 +429,11 @@ class ModelCore(Parameters):
                     # recover if tree = 2 and memory > threshold 2
                     # and certain number of neighbours are
                     # climax forest as well
-
                     if (self.forest_state[i] == 2 and self.forest_memory[i] >
                             self.state_change_s3 * threshold):
                         state_3_neighbours = \
                             np.sum(self.forest_state[i[0] - 1:i[0] + 2,
                                                      i[1] - 1:i[1] + 2] == 3)
-
                         if state_3_neighbours > \
                                 self.min_number_of_s3_neighbours:
                             self.forest_state[i] = 3
@@ -1253,11 +1253,10 @@ class ModelCore(Parameters):
 
         self.init_output()
         
-        for t in tqdm(range(1,t_max+1)):
+        # initialize progress bar
+        t_range = trange(1,t_max+1, desc='running MayaSim', postfix={'population': sum(self.population)})
 
-            #if self.debug:
-            #    print(f"time = {t}, population = {sum(self.population)}")
-
+        for t in t_range:
             # evolve subselfs
             # ecosystem
             self.update_precipitation(t)
@@ -1271,7 +1270,6 @@ class ModelCore(Parameters):
             bca = self.benefit_cost(ag)
 
             # society
-
             if len(self.population) > 0:
                 self.get_cells_in_influence()
                 abandoned, sown = self.get_cropped_cells(bca)
@@ -1290,6 +1288,9 @@ class ModelCore(Parameters):
                 killed_settlements = self.kill_cities()
             else:
                 abandoned = sown = cl = 0
+
+            # update population counter on progress bar
+            t_range.set_postfix({'population': sum(self.population)})
 
             self.step_output(t, npp, wf, ag, es, bca, abandoned, sown, built,
                              lost, new_settlements, killed_settlements)
