@@ -1049,7 +1049,6 @@ class ModelCore(Parameters):
         vacant_lands[influenced_cells[0], influenced_cells[1]] = 0
         vacant_lands = np.asarray(np.where(vacant_lands == 1))
         for city in self.populated_cities:
-            rd = np.random.rand()
 
             if (self.out_mig[city] > 400 and len(vacant_lands[0]) > 0
                     and np.random.rand() <= 0.5):
@@ -1298,7 +1297,7 @@ class ModelCore(Parameters):
                 new_settlements = self.migration(es)
                 killed_settlements = self.kill_cities()
             else:
-                abandoned = sown = cl = 0
+                abandoned = sown = 0
 
             self.step_output(t, npp, wf, ag, es, bca, abandoned, sown, built,
                              lost, new_settlements, killed_settlements)
@@ -1561,12 +1560,7 @@ class ModelCore(Parameters):
         income_es_pg = sum([self.s_es_pg[c] for c in traders])
         number_of_components = float(
             sum([1 if value > 0 else 0 for value in self.comp_size]))
-        mean_cluster_size = (float(sum(self.comp_size)) / number_of_components
-                             if number_of_components > 0 else 0)
-        try:
-            max_cluster_size = max(self.comp_size)
-        except:
-            max_cluster_size = 0
+
         total_agriculture_cells = \
             sum([self.number_cropped_cells[c] for c in traders])
         total_cells_in_influence = \
@@ -1607,7 +1601,6 @@ class ModelCore(Parameters):
 
         # define saving location
         comment = "testing_version"
-        now = datetime.datetime.now()
         location = "output_data/" \
                    + "Output_" + comment + '/'
 
@@ -1631,7 +1624,7 @@ class ModelCore(Parameters):
         model.run(timesteps)
 
         trj = model.get_trajectory()
-        plot = trj[[
+        trj[[
             'total_population', 'total_settlements', 'total_migrants'
             ]].plot()
 
