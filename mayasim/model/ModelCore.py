@@ -391,28 +391,31 @@ class ModelCore(Parameters):
         return self.water, self.flow
 
     def forest_evolve(self, npp):
+        """
+        TODO: add docstring
+        """
+        
+        # Forest regenerates faster [slower] (linearly),
+        # if net primary productivity on the patch
+        # is above [below] average.
+        threshold = np.nanmean(npp) / npp
 
-        npp_mean = np.nanmean(npp)
         # Iterate over all cells repeatedly and regenerate or degenerate
-
         for _ in range(4):
+
             # vectorized random number generation for use in 'Degradation'
             degradation_fortune = np.random.random(len(self.list_of_land_patches))
+            probdec = self.natprobdec * (2 * self.pop_gradient + 1)
 
             for n, i in enumerate(self.list_of_land_patches):
                 if not np.isnan(self.elev[i]):
-                    # Forest regenerates faster [slower] (linearly),
-                    # if net primary productivity on the patch
-                    # is above [below] average.
-                    threshold = npp_mean / npp[i]
 
                     # Degradation:
                     # Decrement with probability 0.003
                     # if there is a settlement around,
                     # degrade with higher probability
-                    probdec = self.natprobdec * (2 * self.pop_gradient[i] + 1)
 
-                    if degradation_fortune[n] <= probdec:
+                    if degradation_fortune[n] <= probdec[i]:
                         if self.forest_state[i] == 3:
                             self.forest_state[i] = 2
                             self.forest_memory[i] = self.state_change_s2
@@ -423,14 +426,14 @@ class ModelCore(Parameters):
                     # Regeneration
                     # recover if tree = 1 and memory > threshold 1
                     if (self.forest_state[i] == 1 and self.forest_memory[i] >
-                            self.state_change_s2 * threshold):
+                            self.state_change_s2 * threshold[i]):
                         self.forest_state[i] = 2
                         self.forest_memory[i] = self.state_change_s2
                     # recover if tree = 2 and memory > threshold 2
                     # and certain number of neighbours are
                     # climax forest as well
                     if (self.forest_state[i] == 2 and self.forest_memory[i] >
-                            self.state_change_s3 * threshold):
+                            self.state_change_s3 * threshold[i]):
                         state_3_neighbours = \
                             np.sum(self.forest_state[i[0] - 1:i[0] + 2,
                                                      i[1] - 1:i[1] + 2] == 3)
@@ -440,13 +443,15 @@ class ModelCore(Parameters):
 
                     # finally, increase memory by one
                     self.forest_memory[i] += 1
-        # calculate cleared land neighbours for output:
 
+        # calculate cleared land neighbours for output:
         if self.veg_rainfall > 0:
             for i in self.list_of_land_patches:
                 self.cleared_land_neighbours[i] = \
                     np.sum(self.forest_state[i[0] - 1:i[0] + 2,
                                              i[1] - 1:i[1] + 2] == 1)
+                
+        # make sure all land cell have forest states 1-3
         assert not np.any(self.forest_state[~np.isnan(self.elev)] < 1), \
             'forest state is smaller than 1 somewhere'
 
@@ -1239,34 +1244,31 @@ class ModelCore(Parameters):
         #    print('output of settlement and geodata is {} and {}'.format(
         #        self.output_settlement_data, self.output_geographic_data))
 
-        # initialize variables
-        # net primary productivity
-        npp = np.zeros((self.rows, self.columns))
-        # water flow
-        wf = np.zeros((self.rows, self.columns))
-        # agricultural productivity
-        ag = np.zeros((self.rows, self.columns))
-        # ecosystem services
-        es = np.zeros((self.rows, self.columns))
-        # benefit cost map for agriculture
-        bca = np.zeros((self.rows, self.columns))
-
         self.init_output()
         
         # initialize progress bar
-        t_range = trange(1,t_max+1, desc='running MayaSim', postfix={'population': sum(self.population)})
+        t_range = trange(1,t_max+1, 
+                         desc='running MayaSim', 
+                         postfix={'population': sum(self.population)})
 
         for t in t_range:
             # evolve subselfs
+
             # ecosystem
             self.update_precipitation(t)
+            # net primary productivity
             npp = self.net_primary_prod()
             self.forest_evolve(npp)
-            # this is curious: only waterflow is used,
+
+            # water flow 
+            # NOTE: this is curious, only waterflow is used, 
             # water level is abandoned.
             wf = self.get_waterflow()[1]
+            # agricultural productivity
             ag = self.get_ag(npp, wf)
+            # ecosystem services
             es = self.get_ecoserv(ag, wf)
+            # benefit cost map for agriculture
             bca = self.benefit_cost(ag)
 
             # society
