@@ -801,16 +801,14 @@ class ModelCore(Parameters):
         self.pop_gradient = np.zeros((self.rows, self.columns))
 
         for city in self.populated_cities:
+            cells = self.cells_in_influence[city] 
             distance = np.sqrt(self.area * (
-                (self.settlement_positions[0][city] - self.coordinates[0])**2 +
-                (self.settlement_positions[1][city] - self.coordinates[1])**2))
+                (self.settlement_positions[0, city] - cells[0])**2 +
+                (self.settlement_positions[1, city] - cells[1])**2))
 
             # EQUATION ###################################################################
-            self.pop_gradient[self.cells_in_influence[city][0],
-                              self.cells_in_influence[city][1]] += \
-                self.population[city] \
-                / (300 * (1 + distance[self.cells_in_influence[city][0],
-                                       self.cells_in_influence[city][1]]))
+            self.pop_gradient[cells[0], cells[1]] += \
+                self.population[city] / (300 * (1 + distance))
             # EQUATION ###################################################################
             self.pop_gradient[self.pop_gradient > 15] = 15
 
@@ -992,23 +990,21 @@ class ModelCore(Parameters):
         # benefit from ecosystem services of cells in influence
         # ##EQUATION###################################################################
 
-        for city in self.populated_cities:
-            if self.eco_income_mode == "mean":
+        if self.eco_income_mode == "mean":
+            for city in self.populated_cities:
                 self.eco_benefit[city] = self.r_es_mean \
                     * np.nanmean(es[self.cells_in_influence[city]])
-            elif self.eco_income_mode == "sum":
-                self.eco_benefit[city] = self.r_es_sum \
-                    * np.nansum(es[self.cells_in_influence[city]])
-                self.s_es_ag[city] = self.r_es_sum \
-                    * np.nansum(self.es_ag[self.cells_in_influence[city]])
-                self.s_es_wf[city] = self.r_es_sum \
-                    * np.nansum(self.es_wf[self.cells_in_influence[city]])
-                self.s_es_fs[city] = self.r_es_sum \
-                    * np.nansum(self.es_fs[self.cells_in_influence[city]])
-                self.s_es_sp[city] = self.r_es_sum \
-                    * np.nansum(self.es_sp[self.cells_in_influence[city]])
-                self.s_es_pg[city] = self.r_es_sum \
-                    * np.nansum(self.es_pg[self.cells_in_influence[city]])
+        
+        elif self.eco_income_mode == "sum":
+            for city in self.populated_cities:
+                cells = self.cells_in_influence[city]
+                self.eco_benefit[city] = self.r_es_sum * np.nansum(es[cells])
+                self.s_es_ag[city] = self.r_es_sum * np.nansum(self.es_ag[cells])
+                self.s_es_wf[city] = self.r_es_sum * np.nansum(self.es_wf[cells])
+                self.s_es_fs[city] = self.r_es_sum * np.nansum(self.es_fs[cells])
+                self.s_es_sp[city] = self.r_es_sum * np.nansum(self.es_sp[cells])
+                self.s_es_pg[city] = self.r_es_sum * np.nansum(self.es_pg[cells])
+        
         try:
             self.eco_benefit[self.population == 0] = 0
         except IndexError:
