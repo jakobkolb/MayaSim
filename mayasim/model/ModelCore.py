@@ -592,38 +592,35 @@ class ModelCore(Parameters):
         if len(self.cropped_cells) > 0:
             occup = np.concatenate(self.cropped_cells, axis=1).astype('int')
 
-            if False:
-                print('population of cities without agriculture:')
-                print(
-                    np.array(self.population)[self.number_cropped_cells == 0])
-                print('pt. migration from cities without agriculture:')
-                print(np.array(self.out_mig)[self.number_cropped_cells == 0])
-                print('out migration from cities without agriculture:')
-                print(np.array(self.migrants)[self.number_cropped_cells == 0])
-
             for index in range(len(occup[0])):
                 self.occupied_cells[occup[0, index], occup[1, index]] = 1
+
         # the age of settlements is increased here.
         self.age = [x + 1 for x in self.age]
+
         # for each settlement: which cells to crop ?
         # calculate utility first! This can be accelerated, if calculations
         # are only done in 40 km radius.
 
         for city in self.populated_cities:
 
+            # get arrays for vectorized utility calculation
+            cells = np.array(self.cells_in_influence[city])
+            distance = np.sqrt(
+                (self.cell_width * \
+                    (self.settlement_positions[0, city] - cells[0]))**2 +
+                (self.cell_height * \
+                    (self.settlement_positions[1, city] - cells[1]))**2)
+            # EQUATION ########################################################
+            utility = (bca[cells[0], cells[1]] - self.estab_cost - \
+                self.ag_travel_cost * distance / np.sqrt(self.population[city])
+                ).tolist()
+            # EQUATION ########################################################
+            
+            # do rest of operations using zip-lists and list-comps
             cells = list(
-                zip(self.cells_in_influence[city][0],
-                    self.cells_in_influence[city][1]))
-            # EQUATION ########################################################
-            utility = [
-                bca[x, y] - self.estab_cost - (self.ag_travel_cost * np.sqrt(
-                    (self.cell_width * (self.settlement_positions[0][city] -
-                                        self.coordinates[0][x, y]))**2 +
-                    (self.cell_height * (self.settlement_positions[1][city] -
-                                         self.coordinates[1][x, y]))**2)) /
-                np.sqrt(self.population[city]) for (x, y) in cells
-            ]
-            # EQUATION ########################################################
+                        zip(self.cells_in_influence[city][0],
+                            self.cells_in_influence[city][1]))
             available = [
                 True if self.occupied_cells[x, y] == 0 else False
 
@@ -634,7 +631,7 @@ class ModelCore(Parameters):
             # with highest utility are first.
             sorted_utility, sorted_available, sorted_cells = \
                 list(zip(*sorted(list(zip(utility, available, cells)),
-                                 reverse=True)))
+                                    reverse=True)))
             # of these sorted lists, sort filter only available cells
             available_util = list(
                 compress(list(sorted_utility), list(sorted_available)))
@@ -649,6 +646,7 @@ class ModelCore(Parameters):
 
                 for cell in cropped_cells
             ]
+
             # sort utilitites and cropped cells to lowest utilities first
             city_has_crops = True if len(cropped_cells) > 0 else False
 
@@ -660,7 +658,7 @@ class ModelCore(Parameters):
 
             # calculate number of new cells to crop
             number_of_new_cells = np.floor(ag_pop_density[city]
-                                           / self.max_people_per_cropped_cell) \
+                                            / self.max_people_per_cropped_cell) \
                 .astype('int')
             # and crop them by selecting cells with positive utility from the
             # beginning of the list
@@ -696,7 +694,7 @@ class ModelCore(Parameters):
 
                     for n in range(
                             min([number_of_lost_cells,
-                                 len(occupied_cells)])):
+                                    len(occupied_cells)])):
                         dropped_cell = occupied_cells[n]
                         self.occupied_cells[dropped_cell] = 0
 
