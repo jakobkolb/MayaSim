@@ -995,14 +995,15 @@ class ModelCore(Parameters):
         
         elif self.eco_income_mode == "sum":
             for city in self.populated_cities:
+                r = self.r_es_sum
                 cells = self.cells_in_influence[city]
-                self.eco_benefit[city] = self.r_es_sum * np.nansum(es[cells])
-                self.s_es_ag[city] = self.r_es_sum * np.nansum(self.es_ag[cells])
-                self.s_es_wf[city] = self.r_es_sum * np.nansum(self.es_wf[cells])
-                self.s_es_fs[city] = self.r_es_sum * np.nansum(self.es_fs[cells])
-                self.s_es_sp[city] = self.r_es_sum * np.nansum(self.es_sp[cells])
-                self.s_es_pg[city] = self.r_es_sum * np.nansum(self.es_pg[cells])
-        
+                self.eco_benefit[city] = r * np.nansum(es[cells])
+                self.s_es_ag[city] = r * np.nansum(self.es_ag[cells])
+                self.s_es_wf[city] = r * np.nansum(self.es_wf[cells])
+                self.s_es_fs[city] = r * np.nansum(self.es_fs[cells])
+                self.s_es_sp[city] = r * np.nansum(self.es_sp[cells])
+                self.s_es_pg[city] = r * np.nansum(self.es_pg[cells])
+                
         try:
             self.eco_benefit[self.population == 0] = 0
         except IndexError:
