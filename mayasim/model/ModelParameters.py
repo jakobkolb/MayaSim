@@ -8,7 +8,7 @@ class ModelParameters(object):
     # OUTPUT LEVEL
     output_level = 'spatial'   # either 'spatial' or 'trajectory'
 
-    # INITIAL NUMBER OF SETTLEMENTS
+    # INITIAL NUMBER OF INHABITANTS PER SETTLEMENT
     min_init_inhabitants = 1000     # 1000
     max_init_inhabitants = 2000     # 2000
 
