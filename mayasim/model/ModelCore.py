@@ -15,7 +15,7 @@ import pkg_resources
 import scipy.ndimage as ndimage
 import scipy.sparse as sparse
 
-from tqdm.auto import tqdm
+from tqdm.auto import trange
 
 try:
     import cPickle as pkl
@@ -164,7 +164,6 @@ class ModelCore(Parameters):
         # dimensions of the map
         self.rows, self.columns = self.precip.shape
         self.height, self.width = 914., 840.  # height and width in km
-        self.pixel_dim = self.width / self.columns
         self.cell_width = self.width / self.columns
         self.cell_height = self.height / self.rows
         self.land_patches = np.asarray(np.where(np.isfinite(self.elev)))
@@ -392,24 +391,31 @@ class ModelCore(Parameters):
         return self.water, self.flow
 
     def forest_evolve(self, npp):
+        """
+        TODO: add docstring
+        """
+        
+        # Forest regenerates faster [slower] (linearly),
+        # if net primary productivity on the patch
+        # is above [below] average.
+        threshold = np.nanmean(npp) / npp
 
-        npp_mean = np.nanmean(npp)
         # Iterate over all cells repeatedly and regenerate or degenerate
+        for _ in range(4):
 
-        for repeat in range(4):
-            for i in self.list_of_land_patches:
+            # vectorized random number generation for use in 'Degradation'
+            degradation_fortune = np.random.random(len(self.list_of_land_patches))
+            probdec = self.natprobdec * (2 * self.pop_gradient + 1)
+
+            for n, i in enumerate(self.list_of_land_patches):
                 if not np.isnan(self.elev[i]):
-                    # Forest regenerates faster [slower] (linearly),
-                    # if net primary productivity on the patch
-                    # is above [below] average.
-                    threshold = npp_mean / npp[i]
+
                     # Degradation:
                     # Decrement with probability 0.003
                     # if there is a settlement around,
                     # degrade with higher probability
-                    probdec = self.natprobdec * (2 * self.pop_gradient[i] + 1)
 
-                    if np.random.random() <= probdec:
+                    if degradation_fortune[n] <= probdec[i]:
                         if self.forest_state[i] == 3:
                             self.forest_state[i] = 2
                             self.forest_memory[i] = self.state_change_s2
@@ -417,36 +423,35 @@ class ModelCore(Parameters):
                             self.forest_state[i] = 1
                             self.forest_memory[i] = 0
 
-                    # Regeneration:"
+                    # Regeneration
                     # recover if tree = 1 and memory > threshold 1
-
                     if (self.forest_state[i] == 1 and self.forest_memory[i] >
-                            self.state_change_s2 * threshold):
+                            self.state_change_s2 * threshold[i]):
                         self.forest_state[i] = 2
                         self.forest_memory[i] = self.state_change_s2
                     # recover if tree = 2 and memory > threshold 2
                     # and certain number of neighbours are
                     # climax forest as well
-
                     if (self.forest_state[i] == 2 and self.forest_memory[i] >
-                            self.state_change_s3 * threshold):
+                            self.state_change_s3 * threshold[i]):
                         state_3_neighbours = \
                             np.sum(self.forest_state[i[0] - 1:i[0] + 2,
                                                      i[1] - 1:i[1] + 2] == 3)
-
                         if state_3_neighbours > \
                                 self.min_number_of_s3_neighbours:
                             self.forest_state[i] = 3
 
                     # finally, increase memory by one
                     self.forest_memory[i] += 1
-        # calculate cleared land neighbours for output:
 
+        # calculate cleared land neighbours for output:
         if self.veg_rainfall > 0:
             for i in self.list_of_land_patches:
                 self.cleared_land_neighbours[i] = \
                     np.sum(self.forest_state[i[0] - 1:i[0] + 2,
                                              i[1] - 1:i[1] + 2] == 1)
+                
+        # make sure all land cell have forest states 1-3
         assert not np.any(self.forest_state[~np.isnan(self.elev)] < 1), \
             'forest state is smaller than 1 somewhere'
 
@@ -587,38 +592,35 @@ class ModelCore(Parameters):
         if len(self.cropped_cells) > 0:
             occup = np.concatenate(self.cropped_cells, axis=1).astype('int')
 
-            if False:
-                print('population of cities without agriculture:')
-                print(
-                    np.array(self.population)[self.number_cropped_cells == 0])
-                print('pt. migration from cities without agriculture:')
-                print(np.array(self.out_mig)[self.number_cropped_cells == 0])
-                print('out migration from cities without agriculture:')
-                print(np.array(self.migrants)[self.number_cropped_cells == 0])
-
             for index in range(len(occup[0])):
                 self.occupied_cells[occup[0, index], occup[1, index]] = 1
+
         # the age of settlements is increased here.
         self.age = [x + 1 for x in self.age]
+
         # for each settlement: which cells to crop ?
         # calculate utility first! This can be accelerated, if calculations
         # are only done in 40 km radius.
 
         for city in self.populated_cities:
 
+            # get arrays for vectorized utility calculation
+            cells = np.array(self.cells_in_influence[city])
+            distance = np.sqrt(
+                (self.cell_width * \
+                    (self.settlement_positions[0, city] - cells[0]))**2 +
+                (self.cell_height * \
+                    (self.settlement_positions[1, city] - cells[1]))**2)
+            # EQUATION ########################################################
+            utility = (bca[cells[0], cells[1]] - self.estab_cost - \
+                self.ag_travel_cost * distance / np.sqrt(self.population[city])
+                ).tolist()
+            # EQUATION ########################################################
+            
+            # do rest of operations using zip-lists and list-comps
             cells = list(
-                zip(self.cells_in_influence[city][0],
-                    self.cells_in_influence[city][1]))
-            # EQUATION ########################################################
-            utility = [
-                bca[x, y] - self.estab_cost - (self.ag_travel_cost * np.sqrt(
-                    (self.cell_width * (self.settlement_positions[0][city] -
-                                        self.coordinates[0][x, y]))**2 +
-                    (self.cell_height * (self.settlement_positions[1][city] -
-                                         self.coordinates[1][x, y]))**2)) /
-                np.sqrt(self.population[city]) for (x, y) in cells
-            ]
-            # EQUATION ########################################################
+                        zip(self.cells_in_influence[city][0],
+                            self.cells_in_influence[city][1]))
             available = [
                 True if self.occupied_cells[x, y] == 0 else False
 
@@ -629,7 +631,7 @@ class ModelCore(Parameters):
             # with highest utility are first.
             sorted_utility, sorted_available, sorted_cells = \
                 list(zip(*sorted(list(zip(utility, available, cells)),
-                                 reverse=True)))
+                                    reverse=True)))
             # of these sorted lists, sort filter only available cells
             available_util = list(
                 compress(list(sorted_utility), list(sorted_available)))
@@ -644,6 +646,7 @@ class ModelCore(Parameters):
 
                 for cell in cropped_cells
             ]
+
             # sort utilitites and cropped cells to lowest utilities first
             city_has_crops = True if len(cropped_cells) > 0 else False
 
@@ -655,7 +658,7 @@ class ModelCore(Parameters):
 
             # calculate number of new cells to crop
             number_of_new_cells = np.floor(ag_pop_density[city]
-                                           / self.max_people_per_cropped_cell) \
+                                            / self.max_people_per_cropped_cell) \
                 .astype('int')
             # and crop them by selecting cells with positive utility from the
             # beginning of the list
@@ -691,7 +694,7 @@ class ModelCore(Parameters):
 
                     for n in range(
                             min([number_of_lost_cells,
-                                 len(occupied_cells)])):
+                                    len(occupied_cells)])):
                         dropped_cell = occupied_cells[n]
                         self.occupied_cells[dropped_cell] = 0
 
@@ -796,16 +799,14 @@ class ModelCore(Parameters):
         self.pop_gradient = np.zeros((self.rows, self.columns))
 
         for city in self.populated_cities:
+            cells = self.cells_in_influence[city] 
             distance = np.sqrt(self.area * (
-                (self.settlement_positions[0][city] - self.coordinates[0])**2 +
-                (self.settlement_positions[1][city] - self.coordinates[1])**2))
+                (self.settlement_positions[0, city] - cells[0])**2 +
+                (self.settlement_positions[1, city] - cells[1])**2))
 
             # EQUATION ###################################################################
-            self.pop_gradient[self.cells_in_influence[city][0],
-                              self.cells_in_influence[city][1]] += \
-                self.population[city] \
-                / (300 * (1 + distance[self.cells_in_influence[city][0],
-                                       self.cells_in_influence[city][1]]))
+            self.pop_gradient[cells[0], cells[1]] += \
+                self.population[city] / (300 * (1 + distance))
             # EQUATION ###################################################################
             self.pop_gradient[self.pop_gradient > 15] = 15
 
@@ -987,23 +988,22 @@ class ModelCore(Parameters):
         # benefit from ecosystem services of cells in influence
         # ##EQUATION###################################################################
 
-        for city in self.populated_cities:
-            if self.eco_income_mode == "mean":
+        if self.eco_income_mode == "mean":
+            for city in self.populated_cities:
                 self.eco_benefit[city] = self.r_es_mean \
                     * np.nanmean(es[self.cells_in_influence[city]])
-            elif self.eco_income_mode == "sum":
-                self.eco_benefit[city] = self.r_es_sum \
-                    * np.nansum(es[self.cells_in_influence[city]])
-                self.s_es_ag[city] = self.r_es_sum \
-                    * np.nansum(self.es_ag[self.cells_in_influence[city]])
-                self.s_es_wf[city] = self.r_es_sum \
-                    * np.nansum(self.es_wf[self.cells_in_influence[city]])
-                self.s_es_fs[city] = self.r_es_sum \
-                    * np.nansum(self.es_fs[self.cells_in_influence[city]])
-                self.s_es_sp[city] = self.r_es_sum \
-                    * np.nansum(self.es_sp[self.cells_in_influence[city]])
-                self.s_es_pg[city] = self.r_es_sum \
-                    * np.nansum(self.es_pg[self.cells_in_influence[city]])
+        
+        elif self.eco_income_mode == "sum":
+            for city in self.populated_cities:
+                r = self.r_es_sum
+                cells = self.cells_in_influence[city]
+                self.eco_benefit[city] = r * np.nansum(es[cells])
+                self.s_es_ag[city] = r * np.nansum(self.es_ag[cells])
+                self.s_es_wf[city] = r * np.nansum(self.es_wf[cells])
+                self.s_es_fs[city] = r * np.nansum(self.es_fs[cells])
+                self.s_es_sp[city] = r * np.nansum(self.es_sp[cells])
+                self.s_es_pg[city] = r * np.nansum(self.es_pg[cells])
+                
         try:
             self.eco_benefit[self.population == 0] = 0
         except IndexError:
@@ -1238,39 +1238,34 @@ class ModelCore(Parameters):
         #    print('output of settlement and geodata is {} and {}'.format(
         #        self.output_settlement_data, self.output_geographic_data))
 
-        # initialize variables
-        # net primary productivity
-        npp = np.zeros((self.rows, self.columns))
-        # water flow
-        wf = np.zeros((self.rows, self.columns))
-        # agricultural productivity
-        ag = np.zeros((self.rows, self.columns))
-        # ecosystem services
-        es = np.zeros((self.rows, self.columns))
-        # benefit cost map for agriculture
-        bca = np.zeros((self.rows, self.columns))
-
         self.init_output()
         
-        for t in tqdm(range(1,t_max+1)):
+        # initialize progress bar
+        t_range = trange(1,t_max+1, 
+                         desc='running MayaSim', 
+                         postfix={'population': sum(self.population)})
 
-            #if self.debug:
-            #    print(f"time = {t}, population = {sum(self.population)}")
-
+        for t in t_range:
             # evolve subselfs
+
             # ecosystem
             self.update_precipitation(t)
+            # net primary productivity
             npp = self.net_primary_prod()
             self.forest_evolve(npp)
-            # this is curious: only waterflow is used,
+
+            # water flow 
+            # NOTE: this is curious, only waterflow is used, 
             # water level is abandoned.
             wf = self.get_waterflow()[1]
+            # agricultural productivity
             ag = self.get_ag(npp, wf)
+            # ecosystem services
             es = self.get_ecoserv(ag, wf)
+            # benefit cost map for agriculture
             bca = self.benefit_cost(ag)
 
             # society
-
             if len(self.population) > 0:
                 self.get_cells_in_influence()
                 abandoned, sown = self.get_cropped_cells(bca)
@@ -1289,6 +1284,9 @@ class ModelCore(Parameters):
                 killed_settlements = self.kill_cities()
             else:
                 abandoned = sown = 0
+
+            # update population counter on progress bar
+            t_range.set_postfix({'population': sum(self.population)})
 
             self.step_output(t, npp, wf, ag, es, bca, abandoned, sown, built,
                              lost, new_settlements, killed_settlements)
