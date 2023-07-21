@@ -123,7 +123,7 @@ def run_experiment(argv):
         test = bool(int(argv[1]))
 
     # Generate paths according to switches and user name
-    test_folder = ['', 'test_output/'][int(test)]
+    test_folder = ['', 'test_experiments/'][int(test)]
     experiment_folder = 'X4_es_income/'
     raw = 'raw_data/'
     res = 'results/'

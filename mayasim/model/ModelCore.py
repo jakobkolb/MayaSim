@@ -30,7 +30,6 @@ else:
     from .ModelParameters import ModelParameters as Parameters
 
 
-
 class ModelCore(Parameters):
     def __init__(self,
                  n=30,
@@ -987,7 +986,6 @@ class ModelCore(Parameters):
     def get_eco_income(self, es):
         # benefit from ecosystem services of cells in influence
         # ##EQUATION###################################################################
-
         if self.eco_income_mode == "mean":
             for city in self.populated_cities:
                 self.eco_benefit[city] = self.r_es_mean \
@@ -1004,10 +1002,7 @@ class ModelCore(Parameters):
                 self.s_es_sp[city] = r * np.nansum(self.es_sp[cells])
                 self.s_es_pg[city] = r * np.nansum(self.es_pg[cells])
                 
-        try:
-            self.eco_benefit[self.population == 0] = 0
-        except IndexError:
-            self.print_variable_lengths()
+        self.eco_benefit[self.population == 0] = 0
         # ##EQUATION###################################################################
 
         return
@@ -1584,52 +1579,6 @@ class ModelCore(Parameters):
 
         return df
 
-    def run_test(self, timesteps=5):
-        import shutil
-
-        N = 50
-
-        # define saving location
-        comment = "testing_version"
-        location = "output_data/" \
-                   + "Output_" + comment + '/'
-
-        if os.path.exists(location):
-            shutil.rmtree(location)
-        os.makedirs(location)
-
-        # initialize Model
-        model = ModelCore(n=N,
-                          debug=True,
-                          output_trajectory=True,
-                          output_settlement_data=True,
-                          output_geographic_data=True,
-                          output_data_location=location)
-        # run Model
-
-        model.crop_income_mode = 'sum'
-        model.r_es_sum = 0.0001
-        model.r_bca_sum = 0.1
-        model.population_control = 'False'
-        model.run(timesteps)
-
-        trj = model.get_trajectory()
-        trj[[
-            'total_population', 'total_settlements', 'total_migrants'
-            ]].plot()
-
-
-        return 1
-
-    def print_variable_lengths(self):
-        for var in dir(self):
-            if not var.startswith('__') and not callable(getattr(self, var)):
-                try:
-                    if len(getattr(self, var)) != 432:
-                        print(var, len(getattr(self, var)))
-                except:
-                    pass
-
 
 if __name__ == "__main__":
 
@@ -1639,10 +1588,10 @@ if __name__ == "__main__":
     N = 10
 
     # define saving location
-    comment = "testing_version"
+    comment = "ModelCore_test"
     now = datetime.datetime.now()
     location = "output_data/" \
-               + "Output_" + comment + '/'
+               + comment + '/'
 
     if os.path.exists(location):
         shutil.rmtree(location)

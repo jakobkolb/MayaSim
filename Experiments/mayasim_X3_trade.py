@@ -127,7 +127,7 @@ def run_experiment(argv):
     if len(argv) > 1:
         test = bool(int(argv[1]))
 
-    test_folder = ['', 'test_output/'][int(test)]
+    test_folder = ['', 'test_experiments/'][int(test)]
     experiment_folder = 'X3_trade/'
     raw = 'raw_data/'
     res = 'results/'
