@@ -6,7 +6,6 @@ errors, no sanity check so far
 import os
 import shutil
 
-import pandas
 import matplotlib.pyplot as plt
 
 from mayasim.model.ModelCore import ModelCore as M

@@ -1,0 +1,9 @@
+[run]
+omit = 
+    Experiments/mayasim_X0*
+    Experiments/mayasim_X5*
+    Experiments/mayasim_X6*
+    Experiments/mayasim_X7*
+    Experiments/mayasim_X8*
+    Experiments/mayasim_X9*
+    Experiments/mayasim_X10*

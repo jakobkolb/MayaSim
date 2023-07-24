@@ -1543,8 +1543,6 @@ class ModelCore(Parameters):
         income_es_ag = sum([self.s_es_ag[c] for c in traders])
         income_es_sp = sum([self.s_es_sp[c] for c in traders])
         income_es_pg = sum([self.s_es_pg[c] for c in traders])
-        number_of_components = float(
-            sum([1 if value > 0 else 0 for value in self.comp_size]))
 
         total_agriculture_cells = \
             sum([self.number_cropped_cells[c] for c in traders])

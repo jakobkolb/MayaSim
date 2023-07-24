@@ -6,5 +6,9 @@
 *.pyc
 *.pkl
 output_data/
-.*
+.pytest_cache
+.coverage
+.coverage.*
+.git
+.DS_Store
 *.egg-info/
