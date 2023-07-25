@@ -1,4 +1,4 @@
-# tests functions for experiments
+# test functions for experiments
 
 from Experiments import mayasim_X1_default_setup as X1, \
                         mayasim_X2_scan_r_es_and_r_agg as X2, \
@@ -8,7 +8,7 @@ from Experiments import mayasim_X1_default_setup as X1, \
 
 def test_X1():
     """
-    test run of X1, base line experiment (default setup)
+    test run of X1, baseline experiment (default setup)
     """
     assert X1.run_experiment(['testing', 1]) == 1
 
@@ -29,7 +29,7 @@ def test_X3():
     assert X3.run_experiment(['testing', 1]) == 1
 
 
-def test_X_4():
+def test_X4():
     """
     test run of X4, experiment checking whether climate 
     variability actually matters for the overshoot and
