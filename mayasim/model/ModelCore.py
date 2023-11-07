@@ -4,8 +4,6 @@ import datetime
 import operator
 import os
 import sys
-import traceback
-import warnings
 from itertools import compress
 
 import networkx as nx
@@ -34,7 +32,6 @@ class ModelCore(Parameters):
     def __init__(self,
                  n=30,
                  output_data_location=None,
-                 debug=False,
                  output_trajectory=True,
                  **kwargs):
         """
@@ -44,11 +41,8 @@ class ModelCore(Parameters):
         ----------
         n: int
             number of settlements to initialize,
-        output_data_location: path_like
-            string stating the folder path to which the output
-            files will be writen,
-        debug: bool
-            switch for debugging output from model,
+        output_data_location: string
+            directory path to write output files to,
         output_trajectory: bool
             switch for output of trajectory data,
         output_settlement_data: bool
@@ -63,26 +57,6 @@ class ModelCore(Parameters):
 
         input_data_location = pkg_resources. \
             resource_filename('mayasim', 'input/')
-
-        # Debugging settings
-        self.debug = debug
-
-        # In debug mode, always print stack for warnings and errors.
-        def warn_with_traceback(message,
-                                category,
-                                filename,
-                                lineno,
-                                file=None,
-                                line=None):
-
-            log = file if hasattr(file, 'write') else sys.stderr
-            traceback.print_stack(file=log)
-            log.write(
-                warnings.formatwarning(message, category, filename, lineno,
-                                       line))
-
-        if self.debug:
-            warnings.showwarning = warn_with_traceback
 
         # *******************************************************************
         # MODEL PARAMETERS (to be varied)
@@ -1228,11 +1202,6 @@ class ModelCore(Parameters):
             number of steps to integrate the model
         """
 
-        # print update about output state
-        #if self.debug:
-        #    print('output of settlement and geodata is {} and {}'.format(
-        #        self.output_settlement_data, self.output_geographic_data))
-
         self.init_output()
         
         # initialize progress bar
@@ -1597,7 +1566,6 @@ if __name__ == "__main__":
 
     # initialize Model
     model = ModelCore(n=N,
-                      debug=True,
                       output_trajectory=True,
                       output_settlement_data=True,
                       output_geographic_data=True,

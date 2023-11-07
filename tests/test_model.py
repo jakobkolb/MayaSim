@@ -33,7 +33,6 @@ def test_ModelCore():
 
     # initialize Model
     model = M(n=N,
-              debug=True,
               output_trajectory=True,
               output_settlement_data=True,
               output_geographic_data=True,
