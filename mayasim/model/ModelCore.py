@@ -273,16 +273,11 @@ class ModelCore(Parameters):
 
     def _get_run_variables(self):
         """
-        Saves all variables and values of the class instance 'self'
-        in a dictionary file at the location given by 'path'
-
-        Parameters:
-        -----------
-        self: class instance
-            class instance whose variables are saved
+        Returns a dictionary containing all attributes of 'self' 
+        and their current values.
         """
 
-        dictionary = {
+        run_variables = {
             attr: getattr(self, attr)
 
             for attr in dir(self)
@@ -290,7 +285,7 @@ class ModelCore(Parameters):
             if not attr.startswith('__') and not callable(getattr(self, attr))
         }
 
-        return dictionary
+        return run_variables
 
     def update_precipitation(self, t):
         """
