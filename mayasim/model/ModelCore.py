@@ -1226,18 +1226,23 @@ class ModelCore(Parameters):
 
             # society
             if len(self.population) > 0:
+                # ag income
                 self.get_cells_in_influence()
                 abandoned, sown = self.get_cropped_cells(bca)
                 self.get_crop_income(bca)
+                # es income
                 self.get_eco_income(es)
                 self.evolve_soil_deg()
+                # tr income
                 self.update_pop_gradient()
                 self.get_rank()
                 (built, lost) = self.build_routes
                 self.get_comps()
                 self.get_centrality()
                 self.get_trade_income()
+                # total income
                 self.get_real_income_pc()
+                # migration
                 self.get_pop_mig()
                 new_settlements = self.migration(es)
                 killed_settlements = self.kill_cities()
