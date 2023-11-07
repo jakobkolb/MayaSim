@@ -1,9 +1,9 @@
 [run]
 omit = 
-    Experiments/mayasim_X0*
-    Experiments/mayasim_X5*
-    Experiments/mayasim_X6*
-    Experiments/mayasim_X7*
-    Experiments/mayasim_X8*
-    Experiments/mayasim_X9*
-    Experiments/mayasim_X10*
+    experiments/X0*
+    experiments/X5*
+    experiments/X6*
+    experiments/X7*
+    experiments/X8*
+    experiments/X9*
+    experiments/X10*

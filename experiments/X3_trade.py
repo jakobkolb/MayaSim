@@ -79,7 +79,8 @@ def run_function(r_trade=6000., precip_amplitude=1.,
     # Run model
 
     if test:
-        steps = 1
+        steps = 3
+
     m.run(steps)
 
     # Save results
@@ -97,7 +98,7 @@ def run_function(r_trade=6000., precip_amplitude=1.,
 
 def run_experiment(argv):
     """
-    Take arv input variables and run experiment accordingly.
+    Take argv input variables and run experiment accordingly.
     This happens in five steps:
     1)  parse input arguments to set switches
         for [test],
@@ -118,14 +119,14 @@ def run_experiment(argv):
     -------
     rt: int
         some return value to show whether sub_experiment succeeded
-        return 1 if sucessfull.
+        return 1 if sucessful.
     """
 
-    # Parse switches from input
+    # Parse test switch from input
     global test
+    test = len(argv) >= 1 and argv[0] == 'test'
 
-    if len(argv) > 1:
-        test = bool(int(argv[1]))
+    # Generate paths according to switches and user name
 
     test_folder = ['', 'test_experiments/'][int(test)]
     experiment_folder = 'X3_trade/'

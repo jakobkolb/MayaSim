@@ -107,9 +107,9 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
     # run Model
 
     if test:
-        m.run(1)
-    else:
-        m.run(steps)
+        steps = 3
+
+    m.run(steps)
 
     # Retrieve results
 
@@ -126,7 +126,7 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
 
 def run_experiment(argv):
     """
-    Take arv input variables and run sub_experiment accordingly.
+    Take argv input variables and run sub_experiment accordingly.
     This happens in five steps:
     1)  parse input arguments to set switches
         for [test],
@@ -147,14 +147,12 @@ def run_experiment(argv):
     -------
     rt: int
         some return value to show whether sub_experiment succeeded
-        return 1 if sucessfull.
+        return 1 if sucessful.
     """
 
+    # Parse test switch from input
     global test
-
-    # Parse switches from input
-    if len(argv) > 1:
-        test = int(argv[1])
+    test = len(argv) >= 1 and argv[0] == 'test'
 
 
     # Generate paths according to switches and user name
