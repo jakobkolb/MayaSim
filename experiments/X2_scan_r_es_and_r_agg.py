@@ -166,12 +166,12 @@ def run_experiment(argv):
 
     if getpass.getuser() == "fritz":
         save_path_raw = "/Users/fritz/Desktop/Thesis/MayaSim/" \
-                        "output_data/{}{}{}".format(test_folder, experiment_folder, raw)
+                        "output/{}{}{}".format(test_folder, experiment_folder, raw)
         save_path_res = "/Users/fritz/Desktop/Thesis/MayaSim/" \
-                        "output_data/{}{}{}".format(test_folder, experiment_folder, res)
+                        "output/{}{}{}".format(test_folder, experiment_folder, res)
     else:
-        save_path_res = './output_data/{}{}{}'.format(test_folder, experiment_folder, raw)
-        save_path_raw = './output_data/{}{}{}'.format(test_folder, experiment_folder, res)
+        save_path_res = './output/{}{}{}'.format(test_folder, experiment_folder, raw)
+        save_path_raw = './output/{}{}{}'.format(test_folder, experiment_folder, res)
 
     # Generate parameter combinations
 

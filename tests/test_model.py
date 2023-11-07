@@ -13,7 +13,7 @@ from mayasim.model.ModelCore import ModelCore as M
 def test_ModelCore():
     """
     test run of Model class, saving a trajectory plot to
-    'MayaSim/output_data/test_model/trajectory_plot.png'
+    'MayaSim/output/test_model/trajectory_plot.png'
 
     TODO:
     - split up into testing single methods separately
@@ -25,7 +25,7 @@ def test_ModelCore():
 
     # define saving location
     comment = "test_model"
-    location = "output_data/" + comment + '/'
+    location = "output/" + comment + '/'
 
     if os.path.exists(location):
         shutil.rmtree(location)

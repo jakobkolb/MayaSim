@@ -5,7 +5,7 @@
 *.so
 *.pyc
 *.pkl
-output_data/
+output/
 .pytest_cache
 .coverage
 .coverage.*

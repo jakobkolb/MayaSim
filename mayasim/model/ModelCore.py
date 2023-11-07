@@ -62,7 +62,7 @@ class ModelCore(Parameters):
         # Set path to static input files
 
         input_data_location = pkg_resources. \
-            resource_filename('mayasim', 'input_data/')
+            resource_filename('mayasim', 'input/')
 
         # Debugging settings
         self.debug = debug
@@ -1588,7 +1588,7 @@ if __name__ == "__main__":
     # define saving location
     comment = "ModelCore_test"
     now = datetime.datetime.now()
-    location = "output_data/" \
+    location = "output/" \
                + comment + '/'
 
     if os.path.exists(location):

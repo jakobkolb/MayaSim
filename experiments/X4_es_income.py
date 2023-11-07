@@ -1,10 +1,10 @@
-"""This experiment serves as a default setup, that other
-Experiments can be compared to.
-
-Therefore, it consists of only one ensemble of runs
-with the default parameters.
 """
-
+I want to know, why the income from ecosystem services is so robust against the
+deterioration of the ecosystem.
+Therefore, run the model without killing settlements without agriculture and
+maybe mess with the parameters for different sources of income from
+ecosystem services.
+"""
 from __future__ import print_function
 try:
     import cPickle as cp
@@ -23,7 +23,8 @@ from mayasim.model.ModelParameters import ModelParameters as Parameters
 test = True
 
 
-def run_function(N=30, kill_cropless=False, steps=350, filename='./'):
+def run_function(N=30, kill_cropless=False, better_ess=False,
+                 steps=350, filename='./'):
     """
     Set up the Model for default Parameters and determine
     which parts of the output are saved where.
@@ -37,6 +38,8 @@ def run_function(N=30, kill_cropless=False, steps=350, filename='./'):
         initial number of settlements on the map,
     kill_cropless: bool
         switch to either kill settlements without crops or not
+    better_es: bool
+        switch for more realistic income from ecosystem services
     steps: int
         number of steps to integrate the model for,
     filename: string
@@ -48,6 +51,7 @@ def run_function(N=30, kill_cropless=False, steps=350, filename='./'):
     m = Model(N, output_data_location=filename, debug=test)
 
     m.kill_cities_without_crops = kill_cropless
+    m.better_ess = better_ess
 
     if not filename.endswith('s0.pkl'):
         m.output_geographic_data = False
@@ -120,42 +124,56 @@ def run_experiment(argv):
 
     # Generate paths according to switches and user name
     test_folder = ['', 'test_experiments/'][int(test)]
-    experiment_folder = 'X1_default/'
+    experiment_folder = 'X4_es_income/'
     raw = 'raw_data/'
     res = 'results/'
 
     if getpass.getuser() == "fritz":
         save_path_raw = "/Users/fritz/Desktop/Thesis/MayaSim/" \
-                        "output_data/{}{}{}".format(test_folder, experiment_folder, raw)
+                        "output/{}{}{}".format(test_folder, experiment_folder, raw)
         save_path_res = "/Users/fritz/Desktop/Thesis/MayaSim/" \
-                        "output_data/{}{}{}".format(test_folder, experiment_folder, res)
+                        "output/{}{}{}".format(test_folder, experiment_folder, res)
     else:
-        save_path_res = './output_data/{}{}{}'.format(test_folder, experiment_folder, raw)
-        save_path_raw = './output_data/{}{}{}'.format(test_folder, experiment_folder, res)
+        save_path_res = './output/{}{}{}'.format(test_folder, experiment_folder, raw)
+        save_path_raw = './output/{}{}{}'.format(test_folder, experiment_folder, res)
 
     # Generate parameter combinations
 
-    index = {0: "kill_cropless"}
+    index = {0: "kill_cropless", 1: "better_ess"}
 
     kill_cropless = [True, False]
+    better_ess = [True, False]
 
-    param_combs = list(it.product(kill_cropless))
+    param_combs = list(it.product(kill_cropless, better_ess))
 
     sample_size = 10 if not test else 2
 
     # Define names and callables for post processing
 
-    name = "mayasim_default_setup"
-
-    estimators = {"<mean_trajectories>":
+    name1 = "trajectory"
+    estimators1 = {"mean_trajectories":
                   lambda fnames: pd.concat([np.load(f, allow_pickle=True)["trajectory"]
-                                            for f in
-                                            fnames]).groupby(level=0).mean(),
-                  "<sigma_trajectories>":
+                                            for f in fnames]).groupby(
+                      level=0).mean(),
+                  "sigma_trajectories":
                   lambda fnames: pd.concat([np.load(f, allow_pickle=True)["trajectory"]
-                                            for f in
-                                            fnames]).groupby(level=0).std()
+                                            for f in fnames]).groupby(
+                          level=0).std()
                   }
+    name2 = "traders_trajectory"
+    estimators2 = {
+                  "mean_trajectories":
+                      lambda fnames:
+                      pd.concat([np.load(f, allow_pickle=True)["traders trajectory"]
+                                            for f in fnames]).groupby(
+                          level=0).mean(),
+                  "sigma_trajectories":
+                      lambda fnames:
+                      pd.concat([np.load(f, allow_pickle=True)["traders trajectory"]
+                                            for f in fnames]).groupby(
+                          level=0).std()
+                  }
+
 
     # Run computation and post processing.
 
@@ -169,7 +187,8 @@ def run_experiment(argv):
                 use_kwargs=True)
 
     handle.compute(run_func=run_function)
-    handle.resave(eva=estimators, name=name)
+    handle.resave(eva=estimators1, name=name1)
+    handle.resave(eva=estimators2, name=name2)
 
     return 1
 

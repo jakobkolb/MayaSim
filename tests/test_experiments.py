@@ -1,9 +1,9 @@
 # test functions for experiments
 
-from Experiments import mayasim_X1_default_setup as X1, \
-                        mayasim_X2_scan_r_es_and_r_agg as X2, \
-                        mayasim_X3_trade as X3, \
-                        mayasim_X4_es_income as X4
+from experiments import X1_default_setup as X1, \
+                        X2_scan_r_es_and_r_agg as X2, \
+                        X3_trade as X3, \
+                        X4_es_income as X4
                         
 
 def test_X1():
