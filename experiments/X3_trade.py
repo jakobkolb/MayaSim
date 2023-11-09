@@ -121,7 +121,10 @@ def run_experiment(argv):
 
     # Parse test switch from input
     global test
-    test = len(argv) >= 1 and argv[0] == 'test'
+    if __name__ == '__main__':
+        test = len(argv) > 1 and argv[1] == 'test'
+    else:
+        test = argv == 'test'
 
     # Generate paths according to switches and user name
 
