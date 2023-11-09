@@ -21,11 +21,11 @@ except ImportError:
     import pickle as pkl
 
 if __name__ == "__main__":
-    from ModelParameters import ModelParameters as Parameters
-    from f90routines import f90routines
+    from mayasim.model.ModelParameters import ModelParameters as Parameters
+    from mayasim.model._ext.f90routines import f90routines
 else:
-    from .f90routines import f90routines
     from .ModelParameters import ModelParameters as Parameters
+    from ._ext.f90routines import f90routines
 
 
 class ModelCore(Parameters):
