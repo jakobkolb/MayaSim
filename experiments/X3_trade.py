@@ -15,10 +15,7 @@ import numpy as np
 import sys
 
 import pandas as pd
-try:
-    import cPickle as cP
-except ImportError:
-    import pickle as cP
+import pickle as pkl
 
 from pymofa.experiment_handling import experiment_handling as handle
 from mayasim.model.ModelCore import ModelCore as Model
@@ -90,7 +87,7 @@ def run_function(r_trade=6000., precip_amplitude=1.,
 
     try:
         with open(filename, 'wb') as dumpfile:
-            cP.dump(res, dumpfile)
+            pkl.dump(res, dumpfile)
             return 1
     except IOError:
         return -1

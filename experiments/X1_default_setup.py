@@ -6,10 +6,7 @@ with the default parameters.
 """
 
 from __future__ import print_function
-try:
-    import cPickle as cp
-except ImportError:
-    import pickle as cp
+import pickle as pkl
 import getpass
 import itertools as it
 import numpy as np
@@ -80,7 +77,7 @@ def run_function(N=30, kill_cropless=False, steps=350, filename='./'):
 
     try:
         with open(filename, 'wb') as dumpfile:
-            cp.dump(res, dumpfile)
+            pkl.dump(res, dumpfile)
             return 1
     except IOError:
         return -1

@@ -9,16 +9,12 @@ from itertools import compress
 import networkx as nx
 import numpy as np
 import pandas
+import pickle as pkl
 import pkg_resources
 import scipy.ndimage as ndimage
 import scipy.sparse as sparse
 
-from tqdm.auto import trange
-
-try:
-    import cPickle as pkl
-except ImportError:
-    import pickle as pkl
+from tqdm.auto import trange   
 
 if __name__ == "__main__":
     from mayasim.model.ModelParameters import ModelParameters as Parameters

@@ -29,10 +29,7 @@ differently)
 """
 
 from __future__ import print_function
-try:
-    import cPickle as cp
-except ImportError:
-    import pickle as cp
+import pickle as pkl
 import getpass
 import itertools as it
 import numpy as np
@@ -118,7 +115,7 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
 
     try:
         with open(filename, 'wb') as dumpfile:
-            cp.dump(res, dumpfile)
+            pkl.dump(res, dumpfile)
             return 1
     except IOError:
         return -1
