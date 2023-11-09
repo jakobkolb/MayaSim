@@ -21,7 +21,7 @@ def test_ModelCore():
       within test
     """
     N = 30
-    timesteps = 1
+    timesteps = 3
 
     # define saving location
     comment = "test_model"

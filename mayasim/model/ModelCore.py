@@ -16,12 +16,8 @@ import scipy.sparse as sparse
 
 from tqdm.auto import trange   
 
-if __name__ == "__main__":
-    from mayasim.model.ModelParameters import ModelParameters as Parameters
-    from mayasim.model._ext.f90routines import f90routines
-else:
-    from .ModelParameters import ModelParameters as Parameters
-    from ._ext.f90routines import f90routines
+from .ModelParameters import ModelParameters as Parameters
+from ._ext.f90routines import f90routines
 
 
 class ModelCore(Parameters):
@@ -1541,43 +1537,3 @@ class ModelCore(Parameters):
             print('trajectory mode must be turned on')
 
         return df
-
-
-if __name__ == "__main__":
-
-    import matplotlib.pyplot as plt
-    import shutil
-
-    N = 10
-
-    # define saving location
-    comment = "ModelCore_test"
-    now = datetime.datetime.now()
-    location = "output/" \
-               + comment + '/'
-
-    if os.path.exists(location):
-        shutil.rmtree(location)
-    # os.makedirs(location)
-
-    # initialize Model
-    model = ModelCore(n=N,
-                      output_trajectory=True,
-                      output_settlement_data=True,
-                      output_geographic_data=True,
-                      output_data_location=location)
-    # run Model
-    timesteps = 30
-    model.crop_income_mode = 'sum'
-    model.r_es_sum = 0.0001
-    model.r_bca_sum = 0.25
-    model.population_control = 'False'
-    model.run(timesteps)
-
-    # plot trajectory
-    trj = model.get_trajectory()
-    ax = trj[[
-        'total_population', 'total_settlements', 'total_migrants'
-        ]].plot()
-    plt.show()
-    ax.figure.savefig(location + 'plot.png')
