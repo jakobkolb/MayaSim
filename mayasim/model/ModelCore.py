@@ -18,9 +18,8 @@ class ModelCore(Parameters):
     # pylint: disable=too-many-statements
     def __init__(self,
                  n=30,
-                 output_data_location=None,
-                 output_trajectory=True,
-                 **kwargs):
+                 keep_trajectory=True,
+                 output_data_location=None):
         """
         Instance of the MayaSim model.
 
@@ -28,14 +27,11 @@ class ModelCore(Parameters):
         ----------
         n: int
             number of settlements to initialize,
+        keep_trajectory: bool
+            switch to keep trajectory data in self.trajectory,
         output_data_location: string
-            directory path to write output files to,
-        output_trajectory: bool
-            switch for output of trajectory data,
-        output_settlement_data: bool
-            switch for output of settlement data,
-        output_geographic_data: bool
-            switch for output of geographic data.
+            if set, geographic and settlement data output will
+            be written to this path.
         """
 
         # Input/Output settings:
@@ -48,7 +44,7 @@ class ModelCore(Parameters):
         # *********************************************************************
         # MODEL PARAMETERS (to be varied)
         # *********************************************************************
-        self.output_trajectory = output_trajectory
+        self.keep_trajectory = keep_trajectory
 
         # Settlement and geographic data will be
         # written to files in each time step.
@@ -1236,9 +1232,9 @@ class ModelCore(Parameters):
         and geography depending on settings
         """
 
-        if self.output_trajectory:
-            self.init_trajectory_output()
-            self.init_traders_trajectory_output()
+        if self.keep_trajectory:
+            self.init_trajectory()
+            self.init_traders_trajectory()
 
         if self.output_geographic_data or self.output_settlement_data:
             # If output data location is needed and does not exist, create it.
@@ -1293,12 +1289,12 @@ class ModelCore(Parameters):
 
         # append stuff to trajectory
 
-        if self.output_trajectory:
-            self.update_trajectory_output(
+        if self.keep_trajectory:
+            self.update_trajectory(
                 t, [npp, wf, ag, es, bca], built, lost,
                 new_settlements, killed_settlements
                 )
-            self.update_traders_trajectory_output(t)
+            self.update_traders_trajectory(t)
 
         # save maps of spatial data
 
@@ -1381,7 +1377,7 @@ class ModelCore(Parameters):
         with open(self.geographic_output_path(t), 'wb') as f:
             pkl.dump(data, f)
 
-    def init_trajectory_output(self):
+    def init_trajectory(self):
         self.trajectory.append([
             'time', 'total_population', 'max_settlement_population',
             'total_migrants', 'total_settlements', 'total_agriculture_cells',
@@ -1397,7 +1393,7 @@ class ModelCore(Parameters):
             'max_AG', 'max_ES', 'max_bca', 'max_soil_deg', 'max_pop_grad'
         ])
 
-    def init_traders_trajectory_output(self):
+    def init_traders_trajectory(self):
         self.traders_trajectory.append([
             'time', 'total_population', 'total_migrants', 'total_traders',
             'total_settlements', 'total_agriculture_cells',
@@ -1408,7 +1404,7 @@ class ModelCore(Parameters):
             'es_income_pop_density'
         ])
 
-    def update_trajectory_output(self, time, args, built, lost,
+    def update_trajectory(self, time, args, built, lost,
                                  new_settlements, killed_settlements):
         # args = [npp, wf, ag, es, bca]
 
@@ -1460,7 +1456,7 @@ class ModelCore(Parameters):
             np.nanmax(self.pop_gradient)
         ])
 
-    def update_traders_trajectory_output(self, time):
+    def update_traders_trajectory(self, time):
 
         traders = np.where(np.array(self.degree) > 0)[0]
 

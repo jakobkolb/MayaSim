@@ -2,6 +2,11 @@
 test script for the model itself.
 Just checking whether it runs without
 errors, no sanity check so far
+
+TODO:
+- split up into testing single methods separately
+- write assertions for all properties calculated 
+  within test
 """
 import os
 import shutil
@@ -10,15 +15,10 @@ import matplotlib.pyplot as plt
 
 from mayasim.model.ModelCore import ModelCore as M
 
-def test_ModelCore():
+def test_model_output():
     """
     test run of Model class, saving a trajectory plot to
     'MayaSim/output/test_model/trajectory_plot.png'
-
-    TODO:
-    - split up into testing single methods separately
-    - write assertions for all properties calculated 
-      within test
     """
     N = 30
     timesteps = 3
@@ -32,11 +32,7 @@ def test_ModelCore():
     os.makedirs(location)
 
     # initialize Model
-    model = M(n=N,
-              output_trajectory=True,
-              output_settlement_data=True,
-              output_geographic_data=True,
-              output_data_location=location)
+    model = M(n=N, output_data_location=location)
 
     # run Model
     model.crop_income_mode = 'sum'
@@ -49,8 +45,8 @@ def test_ModelCore():
     trj = model.get_trajectory()
     measures = [
         'time',
-        'total_population', 
-        'total_settlements', 
+        'total_population',
+        'total_settlements',
         'total_migrants'
         ]
 

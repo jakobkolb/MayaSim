@@ -47,7 +47,7 @@ def run_function(r_trade=6000., precip_amplitude=1.,
 
     if test:
         n = 100
-    m = Model(n=n, output_data_location=filename, debug=test)
+    m = Model(n=n, output_data_location=filename)
     m.r_trade = r_trade
     m.precipitation_amplitude = precip_amplitude
     m.output_level = 'trajectory'

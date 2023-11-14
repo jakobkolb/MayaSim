@@ -46,7 +46,7 @@ def run_function(N=30, kill_cropless=False, better_ess=False,
 
     # initialize the Model
 
-    m = Model(N, output_data_location=filename, debug=test)
+    m = Model(N, output_data_location=filename)
 
     m.kill_cities_without_crops = kill_cropless
     m.better_ess = better_ess

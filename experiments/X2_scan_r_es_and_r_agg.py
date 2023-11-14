@@ -75,7 +75,7 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
 
     # initialize the Model
 
-    m = Model(N, output_data_location=filename, debug=test)
+    m = Model(N, output_data_location=filename)
     if not filename.endswith('s0.pkl'):
         m.output_geographic_data = False
         m.output_settlement_data = False
