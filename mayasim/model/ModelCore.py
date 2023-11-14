@@ -12,7 +12,7 @@ from scipy import ndimage, sparse
 from tqdm.auto import trange
 
 from .ModelParameters import ModelParameters as Parameters
-from ._ext.f90routines import f90routines # pylint: disable=no-name-in-module
+from ._ext.f90routines import f90routines
 
 class ModelCore(Parameters):
     # pylint: disable=too-many-statements
@@ -358,7 +358,9 @@ class ModelCore(Parameters):
         for _ in range(4):
 
             # vectorized random number generation for use in 'Degradation'
-            degradation_fortune = np.random.random(len(self.list_of_land_patches))
+            degradation_fortune = np.random.random(
+                len(self.list_of_land_patches)
+                )
             probdec = self.natprobdec * (2 * self.pop_gradient + 1)
 
             for n, i in enumerate(self.list_of_land_patches):
@@ -512,7 +514,7 @@ class ModelCore(Parameters):
             len(cell_ids[0]) for cell_ids in self.cells_in_influence
         ]
 
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals,too-many-branches
     def get_cropped_cells(self, bca):
         """
         Updates the cropped cells for each city with positive population.
@@ -577,11 +579,7 @@ class ModelCore(Parameters):
             cells = list(
                         zip(self.cells_in_influence[city][0],
                             self.cells_in_influence[city][1]))
-            available = [
-                True if self.occupied_cells[x, y] == 0 else False
-
-                for (x, y) in cells
-            ]
+            available = [self.occupied_cells[x, y] == 0 for (x, y) in cells]
 
             # jointly sort utilities, availability and cells such that cells
             # with highest utility are first.
@@ -604,7 +602,7 @@ class ModelCore(Parameters):
             ]
 
             # sort utilitites and cropped cells to lowest utilities first
-            city_has_crops = True if len(cropped_cells) > 0 else False
+            city_has_crops = len(cropped_cells) > 0
 
             if city_has_crops:
                 occupied_util, occupied_cells = \
@@ -1411,7 +1409,7 @@ class ModelCore(Parameters):
         total_population = sum(self.population)
         try:
             max_population = np.nanmax(self.population)
-        except:
+        except: # pylint: disable=bare-except
             max_population = float('nan')
         total_migrangs = sum(self.migrants)
         total_settlements = len(self.population)
@@ -1425,7 +1423,7 @@ class ModelCore(Parameters):
             if number_of_components > 0 else 0
         try:
             max_cluster_size = max(self.comp_size)
-        except:
+        except: # pylint: disable=bare-except
             max_cluster_size = 0
         self.max_cluster_size = max_cluster_size
         total_agriculture_cells = sum(self.number_cropped_cells)
@@ -1488,21 +1486,21 @@ class ModelCore(Parameters):
         ])
 
     def get_trajectory(self):
-        try:
+        if self.keep_trajectory:
             trj = np.array(self.trajectory)
             columns = trj[0, :]
             df = pandas.DataFrame(trj[1:, :], columns=columns, dtype='float')
-        except IOError:
-            print('trajectory mode must be turned on')
+        else:
+            print("Error: 'keep_trajectory' was set to 'False'")
 
         return df
 
     def get_traders_trajectory(self):
-        try:
+        if self.keep_trajectory:
             trj = self.traders_trajectory
             columns = trj.pop(0)
             df = pandas.DataFrame(trj, columns=columns)
-        except IOError:
-            print('trajectory mode must be turned on')
+        else:
+            print("Error: 'keep_trajectory' was set to 'False'")
 
         return df

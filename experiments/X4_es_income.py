@@ -88,6 +88,7 @@ def run_function(N=30, kill_cropless=False, better_ess=False,
         return -1
 
 
+# pylint: disable=too-many-locals
 def run_experiment(argv):
     """
     Take argv input variables and run experiment accordingly.
@@ -127,14 +128,14 @@ def run_experiment(argv):
     raw = 'raw_data/'
     res = 'results/'
 
-    if getpass.getuser() == "fritz":
-        save_path_raw = "/Users/fritz/Desktop/Thesis/MayaSim/" \
-                        "output/{}{}{}".format(test_folder, experiment_folder, raw)
-        save_path_res = "/Users/fritz/Desktop/Thesis/MayaSim/" \
-                        "output/{}{}{}".format(test_folder, experiment_folder, res)
+    if getpass.getuser() == 'fritz':
+        save_path_raw = '/Users/fritz/Desktop/Thesis/MayaSim/' \
+                        f'output/{test_folder}{experiment_folder}{raw}'
+        save_path_res = '/Users/fritz/Desktop/Thesis/MayaSim/' \
+                        f'output/{test_folder}{experiment_folder}{res}'
     else:
-        save_path_res = './output/{}{}{}'.format(test_folder, experiment_folder, raw)
-        save_path_raw = './output/{}{}{}'.format(test_folder, experiment_folder, res)
+        save_path_raw = f'./output/{test_folder}{experiment_folder}{raw}'
+        save_path_res = f'./output/{test_folder}{experiment_folder}{res}'
 
     # Generate parameter combinations
 
@@ -177,7 +178,7 @@ def run_experiment(argv):
     # Run computation and post processing.
 
     if test:
-        print('testing {}'.format(experiment_folder))
+        print(f'testing {experiment_folder[:-1]}')
     handle = eh(sample_size=sample_size,
                 parameter_combinations=param_combs,
                 index=index,

@@ -91,6 +91,7 @@ def run_function(r_trade=6000., precip_amplitude=1.,
         return -1
 
 
+# pylint: disable=too-many-locals
 def run_experiment(argv):
     """
     Take argv input variables and run experiment accordingly.
@@ -131,14 +132,14 @@ def run_experiment(argv):
     raw = 'raw_data/'
     res = 'results/'
 
-    if getpass.getuser() == "fritz":
-        save_path_raw = "/Users/fritz/Desktop/Thesis/MayaSim/" \
-                        "output/{}{}{}".format(test_folder, experiment_folder, raw)
-        save_path_res = "/Users/fritz/Desktop/Thesis/MayaSim/" \
-                        "output/{}{}{}".format(test_folder, experiment_folder, res)
+    if getpass.getuser() == 'fritz':
+        save_path_raw = '/Users/fritz/Desktop/Thesis/MayaSim/' \
+                        f'output/{test_folder}{experiment_folder}{raw}'
+        save_path_res = '/Users/fritz/Desktop/Thesis/MayaSim/' \
+                        f'output/{test_folder}{experiment_folder}{res}'
     else:
-        save_path_res = './output/{}{}{}'.format(test_folder, experiment_folder, raw)
-        save_path_raw = './output/{}{}{}'.format(test_folder, experiment_folder, res)
+        save_path_raw = f'./output/{test_folder}{experiment_folder}{raw}'
+        save_path_res = f'./output/{test_folder}{experiment_folder}{res}'
 
     name1 = "trajectory"
     estimators1 = {"mean_trajectories":
@@ -175,14 +176,14 @@ def run_experiment(argv):
                                              r_trades,
                                              kill_cities))
 
-
     index = {0: 'precip_amplitude',
              1: 'r_trade',
              2: 'kill_cropless'}
     sample_size = 5 if not test else 2
 
+
     if test:
-        print('testing {}'.format(experiment_folder))
+        print(f'testing {experiment_folder[:-1]}')
     h = handle(sample_size=sample_size,
                parameter_combinations=parameter_combinations,
                index=index,
