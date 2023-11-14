@@ -846,7 +846,7 @@ class ModelCore(Parameters):
                 neighbors = g.successors(city)
                 # find smallest of neighbors
                 smallest_neighbor = self.population.index(
-                    min([self.population[nb] for nb in neighbors]))
+                    min(self.population[nb] for nb in neighbors))
                 # cut corresponding link
                 self.adjacency[city, smallest_neighbor] = 0
                 self.adjacency[smallest_neighbor, city] = 0
@@ -1418,7 +1418,7 @@ class ModelCore(Parameters):
         income_ecosystem = sum(self.eco_benefit)
         income_trade = sum(self.trade_income)
         number_of_components = float(
-            sum([1 if value > 0 else 0 for value in self.comp_size]))
+            sum(1 if value > 0 else 0 for value in self.comp_size))
         mean_cluster_size = float(sum(self.comp_size)) / number_of_components \
             if number_of_components > 0 else 0
         try:
@@ -1458,24 +1458,24 @@ class ModelCore(Parameters):
 
         traders = np.where(np.array(self.degree) > 0)[0]
 
-        total_population = sum([self.population[c] for c in traders])
-        total_migrants = sum([self.migrants[c] for c in traders])
+        total_population = sum(self.population[c] for c in traders)
+        total_migrants = sum(self.migrants[c] for c in traders)
         total_settlements = len(self.population)
         total_traders = len(traders)
         total_trade_links = sum(self.degree) / 2
-        income_agriculture = sum([self.crop_yield[c] for c in traders])
-        income_ecosystem = sum([self.eco_benefit[c] for c in traders])
-        income_trade = sum([self.trade_income[c] for c in traders])
-        income_es_fs = sum([self.s_es_fs[c] for c in traders])
-        income_es_wf = sum([self.s_es_wf[c] for c in traders])
-        income_es_ag = sum([self.s_es_ag[c] for c in traders])
-        income_es_sp = sum([self.s_es_sp[c] for c in traders])
-        income_es_pg = sum([self.s_es_pg[c] for c in traders])
+        income_agriculture = sum(self.crop_yield[c] for c in traders)
+        income_ecosystem = sum(self.eco_benefit[c] for c in traders)
+        income_trade = sum(self.trade_income[c] for c in traders)
+        income_es_fs = sum(self.s_es_fs[c] for c in traders)
+        income_es_wf = sum(self.s_es_wf[c] for c in traders)
+        income_es_ag = sum(self.s_es_ag[c] for c in traders)
+        income_es_sp = sum(self.s_es_sp[c] for c in traders)
+        income_es_pg = sum(self.s_es_pg[c] for c in traders)
 
         total_agriculture_cells = \
-            sum([self.number_cropped_cells[c] for c in traders])
+            sum(self.number_cropped_cells[c] for c in traders)
         total_cells_in_influence = \
-            sum([self.number_cells_in_influence[c] for c in traders])
+            sum(self.number_cells_in_influence[c] for c in traders)
 
         self.traders_trajectory.append([
             time, total_population, total_migrants, total_traders,
