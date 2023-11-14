@@ -28,6 +28,10 @@ differently)
 
 """
 
+# disable pylint invalid-name message on module level
+# pylint: disable=invalid-name
+# pylint: enable=invalid-name
+
 import sys
 import getpass
 
@@ -37,14 +41,14 @@ import numpy as np
 import pandas as pd
 
 from pymofa.experiment_handling import experiment_handling as eh
-from mayasim.model.ModelCore import ModelCore as Model
-from mayasim.model.ModelParameters import ModelParameters as Parameters
+from mayasim.model.core import Core as Model
+from mayasim.model.parameters import Parameters
 
-test = True
+TEST = True
 
 
 def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
-                 N=30, crop_income_mode='sum',
+                 n=30, crop_income_mode='sum',
                  kill_cropless=True, steps=350, filename='./'):
     """
     Set up the Model for different Parameters and determine
@@ -61,7 +65,7 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
         determines whether the population grows
         unbounded or if population growth decreases
         with income per capita and population density.
-    N : int > 0
+    n : int > 0
         initial number of settlements on the map
     crop_income_mode : string
         defines the mode of crop income calculation.
@@ -75,7 +79,7 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
 
     # initialize the Model
 
-    m = Model(N, output_data_location=filename)
+    m = Model(n, output_data_location=filename)
     if not filename.endswith('s0.pkl'):
         m.output_geographic_data = False
         m.output_settlement_data = False
@@ -103,7 +107,7 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
 
     # run Model
 
-    if test:
+    if TEST:
         steps = 3
 
     m.run(steps)
@@ -138,27 +142,27 @@ def run_experiment(argv):
 
     Parameters
     ----------
-    argv: list[N]
+    argv: list
         List of parameters from terminal input
 
     Returns
     -------
     rt: int
         some return value to show whether sub_experiment succeeded
-        return 1 if sucessful.
+        return 1 if successful.
     """
 
     # Parse test switch from input
-    global test # pylint: disable=global-statement
+    global TEST # pylint: disable=global-statement
     if __name__ == '__main__':
-        test = len(argv) > 1 and argv[1] == 'test'
+        TEST = len(argv) > 1 and argv[1] == 'test'
     else:
-        test = argv == 'test'
+        TEST = argv == 'test'
 
 
     # Generate paths according to switches and user name
 
-    test_folder = ['', 'test_experiments/'][int(test)]
+    test_folder = ['', 'test_experiments/'][int(TEST)]
     experiment_folder = 'X2_eco_income/'
     raw = 'raw_data/'
     res = 'results/'
@@ -178,20 +182,18 @@ def run_experiment(argv):
              1: "r_eco",
              2: "kill_cropless"}
 
-    if test == 0:
-        r_bcas = [0.1, 0.15, 0.2, 0.25, 0.3]
-        r_ecos = [0.0001, 0.00015, 0.0002, 0.00025]
-        kill_cropless = [True, False]
-        test=False
-    if test == 1:
+    if TEST:
         r_bcas = [0.1, 0.3]
         r_ecos = [0.0001, 0.00025]
         kill_cropless = [True, False]
-        test=True
+    else:
+        r_bcas = [0.1, 0.15, 0.2, 0.25, 0.3]
+        r_ecos = [0.0001, 0.00015, 0.0002, 0.00025]
+        kill_cropless = [True, False]
 
     param_combs = list(it.product(r_bcas, r_ecos, kill_cropless))
 
-    sample_size = 10 if not test else 2
+    sample_size = 10 if not TEST else 2
 
     # Define names and callables for post processing
 
@@ -222,7 +224,7 @@ def run_experiment(argv):
 
     # Run computation and post processing.
 
-    if test:
+    if TEST:
         print(f'testing {experiment_folder[:-1]}')
     handle = eh(sample_size=sample_size,
                 parameter_combinations=param_combs,
@@ -235,7 +237,7 @@ def run_experiment(argv):
     handle.resave(eva=estimators1, name=name1)
     handle.resave(eva=estimators2, name=name2)
 
-    if test:
+    if TEST:
         data = pd.read_pickle(save_path_res + name1 + '.pkl')
         print(data.head())
         data = pd.read_pickle(save_path_res + name2 + '.pkl')

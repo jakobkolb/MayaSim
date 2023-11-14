@@ -11,10 +11,10 @@ import pkg_resources
 from scipy import ndimage, sparse
 from tqdm.auto import trange
 
-from .ModelParameters import ModelParameters as Parameters
+from .parameters import Parameters
 from ._ext.f90routines import f90routines
 
-class ModelCore(Parameters):
+class Core(Parameters):
     # pylint: disable=too-many-statements
     def __init__(self,
                  n=30,

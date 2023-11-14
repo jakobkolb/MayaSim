@@ -6,6 +6,10 @@ maybe mess with the parameters for different sources of income from
 ecosystem services.
 """
 
+# disable pylint invalid-name message on module level
+# pylint: disable=invalid-name
+# pylint: enable=invalid-name
+
 import sys
 import getpass
 
@@ -15,13 +19,12 @@ import numpy as np
 import pandas as pd
 
 from pymofa.experiment_handling import experiment_handling as eh
-from mayasim.model.ModelCore import ModelCore as Model
-from mayasim.model.ModelParameters import ModelParameters as Parameters
+from mayasim.model.core import Core as Model
+from mayasim.model.parameters import Parameters
 
-test = True
+TEST = True
 
-
-def run_function(N=30, kill_cropless=False, better_ess=False,
+def run_function(n=30, kill_cropless=False, better_ess=False,
                  steps=350, filename='./'):
     """
     Set up the Model for default Parameters and determine
@@ -32,7 +35,7 @@ def run_function(N=30, kill_cropless=False, better_ess=False,
 
     Parameters:
     -----------
-    N : int > 0
+    n : int > 0
         initial number of settlements on the map,
     kill_cropless: bool
         switch to either kill settlements without crops or not
@@ -46,7 +49,7 @@ def run_function(N=30, kill_cropless=False, better_ess=False,
 
     # initialize the Model
 
-    m = Model(N, output_data_location=filename)
+    m = Model(n, output_data_location=filename)
 
     m.kill_cities_without_crops = kill_cropless
     m.better_ess = better_ess
@@ -70,7 +73,7 @@ def run_function(N=30, kill_cropless=False, better_ess=False,
 
     # run Model
 
-    if test:
+    if TEST:
         steps = 3
 
     m.run(steps)
@@ -105,25 +108,25 @@ def run_experiment(argv):
 
     Parameters
     ----------
-    argv: list[N]
+    argv: list
         List of parameters from terminal input
 
     Returns
     -------
     rt: int
         some return value to show whether sub_experiment succeeded
-        return 1 if sucessful.
+        return 1 if successful.
     """
 
     # Parse test switch from input
-    global test # pylint: disable=global-statement
+    global TEST # pylint: disable=global-statement
     if __name__ == '__main__':
-        test = len(argv) > 1 and argv[1] == 'test'
+        TEST = len(argv) > 1 and argv[1] == 'test'
     else:
-        test = argv == 'test'
+        TEST = argv == 'test'
 
     # Generate paths according to switches and user name
-    test_folder = ['', 'test_experiments/'][int(test)]
+    test_folder = ['', 'test_experiments/'][int(TEST)]
     experiment_folder = 'X4_es_income/'
     raw = 'raw_data/'
     res = 'results/'
@@ -146,7 +149,7 @@ def run_experiment(argv):
 
     param_combs = list(it.product(kill_cropless, better_ess))
 
-    sample_size = 10 if not test else 2
+    sample_size = 10 if not TEST else 2
 
     # Define names and callables for post processing
 
@@ -177,7 +180,7 @@ def run_experiment(argv):
 
     # Run computation and post processing.
 
-    if test:
+    if TEST:
         print(f'testing {experiment_folder[:-1]}')
     handle = eh(sample_size=sample_size,
                 parameter_combinations=param_combs,

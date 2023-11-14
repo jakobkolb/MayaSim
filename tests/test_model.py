@@ -13,14 +13,14 @@ import shutil
 
 import matplotlib.pyplot as plt
 
-from mayasim.model.ModelCore import ModelCore as M
+from mayasim.model.core import Core as Model
 
 def test_model_output():
     """
     test run of Model class, saving a trajectory plot to
     'MayaSim/output/test_model/trajectory_plot.png'
     """
-    N = 30
+    n = 30
     timesteps = 3
 
     # define saving location
@@ -32,7 +32,7 @@ def test_model_output():
     os.makedirs(location)
 
     # initialize Model
-    model = M(n=N, output_data_location=location)
+    model = Model(n, output_data_location=location)
 
     # run Model
     model.crop_income_mode = 'sum'

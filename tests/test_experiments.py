@@ -6,14 +6,14 @@ from experiments import X1_default_setup as X1, \
                         X4_es_income as X4
 
 
-def test_X1():
+def test_x1():
     """
     test run of X1, baseline experiment (default setup)
     """
     assert X1.run_experiment('test') == 1
 
 
-def test_X2():
+def test_x2():
     """
     test run of X2, experiment concerning income 
     from agriculture and ecosystem services
@@ -21,7 +21,7 @@ def test_X2():
     assert X2.run_experiment('test') == 1
 
 
-def test_X3():
+def test_x3():
     """
     test run of X3, experiment concerning 
     the influence of trade income
@@ -29,7 +29,7 @@ def test_X3():
     assert X3.run_experiment('test') == 1
 
 
-def test_X4():
+def test_x4():
     """
     test run of X4, experiment checking whether climate 
     variability actually matters for the overshoot and

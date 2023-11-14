@@ -7,6 +7,10 @@ climate variability? Hypothesis: Yes, it does.
 Therefore, vary two parameters: r_trade and precipitation_amplitude
 """
 
+# disable pylint invalid-name message on module level
+# pylint: disable=invalid-name
+# pylint: enable=invalid-name
+
 import sys
 import getpass
 
@@ -16,10 +20,10 @@ import numpy as np
 import pandas as pd
 
 from pymofa.experiment_handling import experiment_handling as handle
-from mayasim.model.ModelCore import ModelCore as Model
-from mayasim.model.ModelParameters import ModelParameters as Parameters
+from mayasim.model.core import Core as Model
+from mayasim.model.parameters import Parameters
 
-test = True
+TEST = True
 
 
 def run_function(r_trade=6000., precip_amplitude=1.,
@@ -45,7 +49,7 @@ def run_function(r_trade=6000., precip_amplitude=1.,
 
     # Initialize Model
 
-    if test:
+    if TEST:
         n = 100
     m = Model(n=n, output_data_location=filename)
     m.r_trade = r_trade
@@ -73,7 +77,7 @@ def run_function(r_trade=6000., precip_amplitude=1.,
 
     # Run model
 
-    if test:
+    if TEST:
         steps = 3
 
     m.run(steps)
@@ -108,26 +112,26 @@ def run_experiment(argv):
 
     Parameters
     ----------
-    argv: list[N]
+    argv: list
         List of parameters from terminal input
 
     Returns
     -------
     rt: int
         some return value to show whether sub_experiment succeeded
-        return 1 if sucessful.
+        return 1 if successful.
     """
 
     # Parse test switch from input
-    global test # pylint: disable=global-statement
+    global TEST # pylint: disable=global-statement
     if __name__ == '__main__':
-        test = len(argv) > 1 and argv[1] == 'test'
+        TEST = len(argv) > 1 and argv[1] == 'test'
     else:
-        test = argv == 'test'
+        TEST = argv == 'test'
 
     # Generate paths according to switches and user name
 
-    test_folder = ['', 'test_experiments/'][int(test)]
+    test_folder = ['', 'test_experiments/'][int(TEST)]
     experiment_folder = 'X3_trade/'
     raw = 'raw_data/'
     res = 'results/'
@@ -167,9 +171,9 @@ def run_experiment(argv):
 
 
     precip_amplitudes = [0., 0.5, 1., 1.5, 2.] \
-        if not test else [0., 1.]
+        if not TEST else [0., 1.]
     r_trades = [3000., 4000., 5000., 6000., 7000., 8000., 9000., 10000.] \
-        if not test else [6000., 8000.]
+        if not TEST else [6000., 8000.]
     kill_cities = [True, False]
 
     parameter_combinations = list(it.product(precip_amplitudes,
@@ -179,10 +183,10 @@ def run_experiment(argv):
     index = {0: 'precip_amplitude',
              1: 'r_trade',
              2: 'kill_cropless'}
-    sample_size = 5 if not test else 2
+    sample_size = 5 if not TEST else 2
 
 
-    if test:
+    if TEST:
         print(f'testing {experiment_folder[:-1]}')
     h = handle(sample_size=sample_size,
                parameter_combinations=parameter_combinations,
@@ -195,7 +199,7 @@ def run_experiment(argv):
     h.resave(eva=estimators1, name=name1)
     h.resave(eva=estimators2, name=name2)
 
-    if test:
+    if TEST:
         data = pd.read_pickle(save_path_res + name1 + '.pkl')
         print(data.head())
         data = pd.read_pickle(save_path_res + name2 + '.pkl')
