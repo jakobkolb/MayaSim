@@ -5,12 +5,13 @@ Therefore, run the model without killing settlements without agriculture and
 maybe mess with the parameters for different sources of income from
 ecosystem services.
 """
-from __future__ import print_function
-import pickle as pkl
-import getpass
-import itertools as it
-import numpy as np
+
 import sys
+import getpass
+
+import itertools as it
+import pickle as pkl
+import numpy as np
 import pandas as pd
 
 from pymofa.experiment_handling import experiment_handling as eh
@@ -114,7 +115,7 @@ def run_experiment(argv):
     """
 
     # Parse test switch from input
-    global test
+    global test # pylint: disable=global-statement
     if __name__ == '__main__':
         test = len(argv) > 1 and argv[1] == 'test'
     else:

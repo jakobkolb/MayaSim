@@ -33,6 +33,7 @@ setup(
         'test': [
             'pytest',
             'pytest-cov',
+            'pylama',
             'pylint'
         ]
     },

@@ -1,8 +1,8 @@
 import numpy as np
 
-class ModelParameters(object):
+class ModelParameters:
 
-    # *******************************************************************
+    # *************************************************************************
     # RUN PARAMETERS:
 
     # OUTPUT LEVEL
@@ -14,14 +14,15 @@ class ModelParameters(object):
 
     timesteps = 325			# 325
 
-    # *******************************************************************
+    # *************************************************************************
     # MODEL PARAMETERS:
-    # *******************************************************************
+    # *************************************************************************
 
-    # *******************************************************************
+    # *************************************************************************
     # ECOSYSTEM
 
     # RAINFALL PARAMETERS
+
     veg_rainfall = 0.
     precipitation_modulation = True
     # multiplier for precipitation according to climate cycle
@@ -39,16 +40,8 @@ class ModelParameters(object):
     # decrease in rainfall in percent
     drought_severity = 10
 
-    # WATER FLOW PARAMETERS
-    # percentage of raindrops that is infitrated per iteration
-    infitration = 0
-    # Percentage of cells that receive raindrops 
-    # (might be redundant, have to look into that
-    # -- looked into that, proves to be useful now)
-    # speeds up water flow by approx. 1/precip_percent
-    precip_percent = 0.25
-
     # FOREST PARAMETERS
+
     # rate of natural forest depreciation per unit time
     natprobdec = 0.003
     # Threshold for forest regeneration 1 -> 2
@@ -58,7 +51,7 @@ class ModelParameters(object):
     # number of state 3 neighbors required for 2 -> 3 regeneration
     min_number_of_s3_neighbours = 2
 
-    # *******************************************************************
+    # *************************************************************************
     # AGRICULTURE
 
     # WEIGHTS FOR AGRICULTURAL PRODUCTIVITY
@@ -75,7 +68,6 @@ class ModelParameters(object):
     # PARAMETERS FOR CROPPING CELLS
     estab_cost = 900
     ag_travel_cost = 950
-
     min_people_per_cropped_cell = 40.
     max_people_per_cropped_cell = 125.
 
@@ -91,15 +83,16 @@ class ModelParameters(object):
     e_wf = 100.   # water flow
     e_f = 45.    # forest
     e_r = 0.     # rainfall (not included in current netlogo version)
-    e_deg = 0.   # population density (not includet in current netlogo version)
+    e_deg = 0.   # population density (not included in current netlogo version)
+
     # SWITCH FOR ECOSYSTEM SERVICES CALCULATION
     better_ess = False
 
-    # *******************************************************************
+    # *************************************************************************
     # SOCIO-ECONOMY
 
     # crop_income specifies the way, crop income is calculated.
-    # possible: 'mean' or 'sum'. Default is 'mean'.
+    # 'mean' or 'sum', Heckbert: 'mean'
     crop_income_mode = 'sum'
     eco_income_mode = 'sum'
 

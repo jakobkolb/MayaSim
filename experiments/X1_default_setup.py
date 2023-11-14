@@ -5,12 +5,12 @@ Therefore, it consists of only one ensemble of runs
 with the default parameters.
 """
 
-from __future__ import print_function
-import pickle as pkl
-import getpass
-import itertools as it
-import numpy as np
 import sys
+import getpass
+
+import itertools as it
+import pickle as pkl
+import numpy as np
 import pandas as pd
 
 from pymofa.experiment_handling import experiment_handling as eh
@@ -110,7 +110,7 @@ def run_experiment(argv):
     """
 
     # Parse test switch from input
-    global test
+    global test # pylint: disable=global-statement
     if __name__ == '__main__':
         test = len(argv) > 1 and argv[1] == 'test'
     else:
