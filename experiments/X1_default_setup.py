@@ -45,7 +45,7 @@ def run_function(n=30, kill_cropless=False, steps=350, filename='./'):
 
     # initialize the Model
 
-    m = Model(n, output_data_location=filename)
+    m = Model(n, output_path=filename)
 
     m.kill_cities_without_crops = kill_cropless
 
@@ -55,12 +55,12 @@ def run_function(n=30, kill_cropless=False, steps=350, filename='./'):
 
     # store initial conditions and Parameters
 
-    res = {"initials": pd.DataFrame({"Settlement X Possitions":
-                                     m.settlement_positions[0],
-                                     "Settlement Y Possitions":
-                                     m.settlement_positions[1],
+    res = {"initials": pd.DataFrame({"Settlement X Positions":
+                                     m.stm_positions[0],
+                                     "Settlement Y Positions":
+                                     m.stm_positions[1],
                                      "Population":
-                                     m.population}),
+                                     m.stm_population}),
            "Parameters": pd.Series({key: getattr(m, key)
                                     for key in dir(Parameters)
                                     if not key.startswith('__')
@@ -75,8 +75,8 @@ def run_function(n=30, kill_cropless=False, steps=350, filename='./'):
 
     # Retrieve results
 
-    res["trajectory"] = m.get_trajectory()
-    res["traders trajectory"] = m.get_traders_trajectory()
+    res["aggregates"] = m.get_aggregates()
+    res["traders aggregates"] = m.get_traders_aggregates()
 
     try:
         with open(filename, 'wb') as dumpfile:
@@ -149,12 +149,12 @@ def run_experiment(argv):
 
     name = "mayasim_default_setup"
 
-    estimators = {"<mean_trajectories>":
-                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["trajectory"]
+    estimators = {"<mean_aggregates>":
+                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["aggregates"]
                                             for f in
                                             fnames]).groupby(level=0).mean(),
-                  "<sigma_trajectories>":
-                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["trajectory"]
+                  "<sigma_aggregates>":
+                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["aggregates"]
                                             for f in
                                             fnames]).groupby(level=0).std()
                   }

@@ -79,7 +79,7 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
 
     # initialize the Model
 
-    m = Model(n, output_data_location=filename)
+    m = Model(n, output_path=filename)
     if not filename.endswith('s0.pkl'):
         m.output_geographic_data = False
         m.output_settlement_data = False
@@ -93,11 +93,11 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
     # store initial conditions and Parameters
 
     res = {}
-    res["initials"] = pd.DataFrame({"Settlement X Possitions":
-                                    m.settlement_positions[0],
-                                    "Settlement Y Possitions":
-                                    m.settlement_positions[1],
-                                    "Population": m.population})
+    res["initials"] = pd.DataFrame({"Settlement X Positions":
+                                    m.stm_positions[0],
+                                    "Settlement Y Positions":
+                                    m.stm_positions[1],
+                                    "Population": m.stm_population})
 
     res["Parameters"] = pd.Series({key:
                                    getattr(m, key)
@@ -114,8 +114,8 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
 
     # Retrieve results
 
-    res["trajectory"] = m.get_trajectory()
-    res["traders trajectory"] = m.get_traders_trajectory()
+    res["aggregates"] = m.get_aggregates()
+    res["traders aggregates"] = m.get_traders_aggregates()
 
     try:
         with open(filename, 'wb') as dumpfile:
@@ -197,27 +197,27 @@ def run_experiment(argv):
 
     # Define names and callables for post processing
 
-    name1 = "trajectory"
+    name1 = "aggregates"
 
-    estimators1 = {"mean_trajectories":
+    estimators1 = {"mean_aggregates":
                       lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["trajectory"]
+                      pd.concat([np.load(f, allow_pickle=True)["aggregates"]
                                  for f in fnames]).groupby(level=0).mean(),
-                  "sigma_trajectories":
+                  "sigma_aggregates":
                       lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["trajectory"]
+                      pd.concat([np.load(f, allow_pickle=True)["aggregates"]
                                  for f in fnames]).groupby(level=0).std()
                   }
-    name2 = "traders_trajectory"
+    name2 = "traders_aggregates"
     estimators2 = {
-                  "mean_trajectories":
+                  "mean_aggregates":
                       lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["traders trajectory"]
+                      pd.concat([np.load(f, allow_pickle=True)["traders aggregates"]
                                             for f in fnames]).groupby(
                           level=0).mean(),
-                  "sigma_trajectories":
+                  "sigma_aggregates":
                       lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["traders trajectory"]
+                      pd.concat([np.load(f, allow_pickle=True)["traders aggregates"]
                                             for f in fnames]).groupby(
                           level=0).std()
                   }

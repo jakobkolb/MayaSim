@@ -17,8 +17,8 @@ from mayasim.model.core import Core as Model
 
 def test_model_output():
     """
-    test run of Model class, saving a trajectory plot to
-    'MayaSim/output/test_model/trajectory_plot.png'
+    test run of Model class, saving a plot of some aggregate 
+    values to 'MayaSim/output/test_model/aggregates_plot.png'
     """
     n = 30
     timesteps = 3
@@ -32,7 +32,7 @@ def test_model_output():
     os.makedirs(location)
 
     # initialize Model
-    model = Model(n, output_data_location=location)
+    model = Model(n, output_path=location)
 
     # run Model
     model.crop_income_mode = 'sum'
@@ -41,8 +41,8 @@ def test_model_output():
     model.population_control = 'False'
     model.run(timesteps)
 
-    # get trajectory
-    trj = model.get_trajectory()
+    # get aggregates
+    trj = model.get_aggregates()
     measures = [
         'time',
         'total_population',
@@ -50,11 +50,11 @@ def test_model_output():
         'total_migrants'
         ]
 
-    # plot trajectory
+    # plot aggregates
     fig, axes = plt.subplots(ncols=len(measures)-1, figsize=(16, 2))
     for i, meas in enumerate(measures[1:]):
         trj.plot('time', y=meas, ax=axes[i], title=meas)
 
-    fig.savefig(location + 'trajectory_plot.png')
+    fig.savefig(location + 'aggregates_plot.png')
 
     assert trj.shape[0] == timesteps

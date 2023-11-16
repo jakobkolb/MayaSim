@@ -24,11 +24,11 @@ class Parameters:
     # RAINFALL PARAMETERS
 
     veg_rainfall = 0.
-    precipitation_modulation = True
+    precip_modulation = True
     # multiplier for precipitation according to climate cycle
-    precipitation_variation = np.array([-0.06, -0.12, -0.18,
+    precip_variation = np.array([-0.06, -0.12, -0.18,
                                         -0.12, -0.06, 0., 0.06, 0.])
-    precipitation_amplitude = 1.
+    precip_amplitude = 1.
     # length of period with constant rainfall
     climate_var = 3
 
@@ -49,7 +49,7 @@ class Parameters:
     # Threshold for forest regeneration 2 -> 3
     state_change_s3 = 100.
     # number of state 3 neighbors required for 2 -> 3 regeneration
-    min_number_of_s3_neighbours = 2
+    min_s3_neighbours = 2
 
     # *************************************************************************
     # AGRICULTURE
@@ -71,8 +71,8 @@ class Parameters:
     min_people_per_cropped_cell = 40.
     max_people_per_cropped_cell = 125.
 
-    # KILL CITIES WITHOUT POPULATION ONLY OR ALSO WITHOUT CROPS
-    kill_cities_without_crops = False
+    # KILL SETTLEMENTS WITHOUT POPULATION ONLY OR ALSO WITHOUT CROPS
+    kill_stm_without_crops = False
 
     # PARAMETERS FOR SOIL DEGRADATION:
     deg_rate = 5.0  # 5.0 - degradation rate for cropped cells
@@ -108,7 +108,7 @@ class Parameters:
     # DEMOGRAPHIC PARAMETERS
     birth_rate_parameter = 0.15
 
-    min_city_size = 360
+    min_stm_size = 360
 
     # optionally make birth rate scale inversely with p.c. income
     population_control = False
