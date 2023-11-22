@@ -1,7 +1,7 @@
 import operator
 import os
 import sys
-from itertools import compress
+from itertools import compress, chain
 
 import pickle as pkl
 import networkx as nx
@@ -236,13 +236,13 @@ class Core(Parameters):
         self.stm_influenced_cells_ind = [None] * n  # will be a list of lists
 
         self.stm_cropped_cells_ind = [None] * n
+
         # for now, cropped cells are only the settlement positions.
         # first cropped cells are added at the first call of
         # get_cropped_cells()
-
         for stm in self.populated_stm_list:
-            self.stm_cropped_cells_ind[stm] = [[self.stm_positions[0, stm]],
-                                               [self.stm_positions[1, stm]]]
+            self.stm_cropped_cells_ind[stm] = [(self.stm_positions[0, stm],
+                                                self.stm_positions[1, stm])]
 
         self.cel_is_occupied = np.zeros((self.rows, self.columns))
         self.stm_cropped_cells_n = [0] * n
@@ -358,7 +358,7 @@ class Core(Parameters):
 
         return self.cel_water, self.cel_flow
 
-    def evolve_forest(self, npp):
+    def evolve_forest(self, cel_npp):
         """
         TODO: add docstring
         """
@@ -366,7 +366,7 @@ class Core(Parameters):
         # Forest regenerates faster [slower] (linearly),
         # if net primary productivity on the patch
         # is above [below] average.
-        threshold = np.nanmean(npp) / npp
+        threshold = np.nanmean(cel_npp) / cel_npp
 
         # Iterate over all cells repeatedly and regenerate or degenerate
         for _ in range(4):
@@ -434,14 +434,14 @@ class Core(Parameters):
         according to the waterflow model?
         """
         # EQUATION ############################################################
-        npp = 3000 * np.minimum(
+        cel_npp = 3000 * np.minimum(
             1 - np.exp(-6.64e-4 * self.cel_precip),
             1. / (1 + np.exp(1.315 - (0.119 * self.cel_temp))))
         # EQUATION ############################################################
 
-        return npp
+        return cel_npp
 
-    def get_ag(self, npp, wf):
+    def get_ag(self, cel_npp, cel_wf):
         """
         agricultural productivity is calculated via a
         linear additive model from
@@ -450,18 +450,18 @@ class Core(Parameters):
         of each patch.
         """
         # EQUATION ############################################################
-        return (self.a_npp * npp
+        return (self.a_npp * cel_npp
                 + self.a_sp * self.cel_soilprod
                 - self.a_s * self.cel_slope
-                - self.a_wf * wf
+                - self.a_wf * cel_wf
                 - self.cel_soil_deg)
         # EQUATION ############################################################
 
-    def get_ecoserv(self, ag, wf):
+    def get_ecoserv(self, cel_ag, cel_wf):
         """
         Ecosystem Services are calculated via a linear
-        additive model from agricultural productivity (ag),
-        waterflow through the cell (wf) and forest
+        additive model from agricultural productivity (cel_ag),
+        waterflow through the cell (cel_wf) and forest
         state on the cell (forest) in [1,3],
         The recent version of mayasim limits value of
         ecosystem services to 1 < ecoserv < 250, it also proposes
@@ -470,8 +470,8 @@ class Core(Parameters):
         # EQUATION ############################################################
 
         if not self.better_ess:
-            self.cel_es_ag = self.e_ag * ag
-            self.cel_es_wf = self.e_wf * wf
+            self.cel_es_ag = self.e_ag * cel_ag
+            self.cel_es_wf = self.e_wf * cel_wf
             self.cel_es_fs = self.e_f * (self.cel_forest_state - 1.)
             self.cel_es_sp = self.e_r * self.cel_precip
             self.cel_es_pg = self.e_deg * self.cel_pop_gradient
@@ -479,9 +479,9 @@ class Core(Parameters):
             # change to use forest as proxy for income from agricultural
             # productivity. Multiply by 2 to get same per cell levels as
             # before
-            self.cel_es_ag = np.zeros(np.shape(ag))
-            self.cel_es_wf = self.e_wf * wf
-            self.cel_es_fs = 2. * self.e_ag * (self.cel_forest_state - 1.) * ag
+            self.cel_es_ag = np.zeros(np.shape(cel_ag))
+            self.cel_es_wf = self.e_wf * cel_wf
+            self.cel_es_fs = 2. * self.e_ag * (self.cel_forest_state - 1.) * cel_ag
             self.cel_es_sp = self.e_r * self.cel_precip
             self.cel_es_pg = self.e_deg * self.cel_pop_gradient
 
@@ -497,11 +497,11 @@ class Core(Parameters):
     # The Society
     ###########################################################################
 
-    def benefit_cost(self, ag_in):
+    def benefit_cost(self, cel_ag):
         # Benefit cost assessment
 
         return self.max_yield * (1 - self.origin_shift * np.exp(
-            np.float128(-self.slope_yield * ag_in)))
+            np.float128(-self.slope_yield * cel_ag)))
 
     def get_influenced_cells(self):
         """
@@ -535,8 +535,8 @@ class Core(Parameters):
             len(cell_ids[0]) for cell_ids in self.stm_influenced_cells_ind
             ]
 
-    # pylint: disable=too-many-locals,too-many-branches
-    def get_cropped_cells(self, bca):
+    # pylint: disable=too-many-locals
+    def get_cropped_cells(self, cel_bca):
         """
         Updates the cropped cells for each stm with positive population.
         Calculates the utility for each cell (depending on distance from
@@ -551,29 +551,22 @@ class Core(Parameters):
         sown = 0
 
         # number of currently cropped cells for each settlement
-        # pylint: disable=unsubscriptable-object
-        self.stm_cropped_cells_n = np.array(
-            [len(cell_ids[0]) for cell_ids in self.stm_cropped_cells_ind])
+        self.stm_cropped_cells_n = \
+            [len(crp) for crp in self.stm_cropped_cells_ind]
 
         # agricultural population density (people per cropped land)
         # determines the number of cells that can be cropped.
         ag_pop_density = [
-            p / (self.stm_cropped_cells_n[c] * self.area)
+            pop / (self.stm_cropped_cells_n[stm] * self.area)
 
-            if self.stm_cropped_cells_n[c] > 0 else 0.
+            if self.stm_cropped_cells_n[stm] > 0 else 0.
 
-            for c, p in enumerate(self.stm_population)
+            for stm, pop in enumerate(self.stm_population)
             ]
 
-        # occupied_cells is a mask of all occupied cells calculated as the
-        # unification of the cropped cells of all settlements.
-
-        if len(self.stm_cropped_cells_ind) > 0:
-            occup = np.concatenate(
-                self.stm_cropped_cells_ind, axis=1).astype('int')
-
-            for index in range(len(occup[0])):
-                self.cel_is_occupied[occup[0, index], occup[1, index]] = 1
+        # cel_is_occupied is a mask of all cropped cells of all settlements
+        for cel in chain(*self.stm_cropped_cells_ind):
+            self.cel_is_occupied[cel] = 1
 
         # the age of settlements is increased here.
         self.stm_age = [x + 1 for x in self.stm_age]
@@ -585,31 +578,31 @@ class Core(Parameters):
         for stm in self.populated_stm_list:
 
             # get arrays for vectorized utility calculation
-            cells = np.array(self.stm_influenced_cells_ind[stm])
+            infd_cells = np.array(self.stm_influenced_cells_ind[stm])
             distance = np.sqrt(
                 (self.width_cell * \
-                    (self.stm_positions[0, stm] - cells[0]))**2 +
+                    (self.stm_positions[0, stm] - infd_cells[0]))**2 +
                 (self.height_cell * \
-                    (self.stm_positions[1, stm] - cells[1]))**2)
+                    (self.stm_positions[1, stm] - infd_cells[1]))**2)
+
             # EQUATION ########################################################
             utility = (
-                bca[cells[0], cells[1]] - self.estab_cost
+                cel_bca[infd_cells[0], infd_cells[1]] - self.estab_cost
                 - self.ag_travel_cost * distance / np.sqrt(
                     self.stm_population[stm])
                 ).tolist()
             # EQUATION ########################################################
 
             # do rest of operations using zip-lists and list-comps
-            cells = list(
-                        zip(self.stm_influenced_cells_ind[stm][0],
-                            self.stm_influenced_cells_ind[stm][1]))
-            available = [self.cel_is_occupied[x, y] == 0 for (x, y) in cells]
+            infd_cells = list(zip(*self.stm_influenced_cells_ind[stm]))
+            available = [self.cel_is_occupied[x, y] == 0
+                         for (x, y) in infd_cells]
 
             # jointly sort utilities, availability and cells such that cells
             # with highest utility are first.
             sorted_utility, sorted_available, sorted_cells = \
                 list(zip(*sorted(
-                    list(zip(utility, available, cells)), reverse=True)))
+                    list(zip(utility, available, infd_cells)), reverse=True)))
             # of these sorted lists, sort filter only available cells
             available_util = list(
                 compress(list(sorted_utility), list(sorted_available)))
@@ -617,12 +610,12 @@ class Core(Parameters):
                 compress(list(sorted_cells), list(sorted_available)))
 
             # save local copy of all cropped cells
-            cropped_cells = list(zip(*self.stm_cropped_cells_ind[stm]))
+            cropped_cells = self.stm_cropped_cells_ind[stm]
             # select utilities for these cropped cells
             cropped_utils = [
-                utility[cells.index(cell)] if cell in cells else -1
+                utility[infd_cells.index(cel)] if cel in infd_cells else -1
 
-                for cell in cropped_cells
+                for cel in cropped_cells
                 ]
 
             # sort utilitites and cropped cells to lowest utilities first
@@ -643,11 +636,10 @@ class Core(Parameters):
 
             for n in range(min([number_of_new_cells, len(available_util)])):
                 if available_util[n] > 0:
+                    self.stm_cropped_cells_ind[stm].append(available_cells[n])
                     self.cel_is_occupied[available_cells[n]] = 1
 
-                    for dim in range(2):
-                        self.stm_cropped_cells_ind[stm][dim] \
-                            .append(available_cells[n][dim])
+                    sown += 1
 
             if settlement_has_crops:
 
@@ -670,15 +662,13 @@ class Core(Parameters):
                     # therefore, filter cropped cells from utility list
                     # and delete last n cells.
 
-                    for n in range(
-                            min([number_of_lost_cells,
-                                    len(occupied_cells)])):
-                        dropped_cell = occupied_cells[n]
-                        self.cel_is_occupied[dropped_cell] = 0
+                    for n in range(min([number_of_lost_cells,
+                                        len(occupied_cells)])):
 
-                        for dim in range(2):
-                            self.stm_cropped_cells_ind[stm][dim] \
-                                .remove(dropped_cell[dim])
+                        self.stm_cropped_cells_ind[stm] \
+                            .remove(occupied_cells[n])
+                        self.cel_is_occupied[occupied_cells[n]] = 0
+
                         abandoned += 1
 
                 # 3.) abandon cells with utility <= 0
@@ -689,29 +679,24 @@ class Core(Parameters):
                     occupied_cells[i] for i in range(len(occupied_cells))
 
                     if occupied_util[i] < 0
-                    and occupied_cells[i] in zip(
-                        *self.stm_cropped_cells_ind[stm])
+                    and occupied_cells[i] in self.stm_cropped_cells_ind[stm]
                     ]
 
                 # and release them.
-                for useless_cropped_cell in useless_cropped_cells:
-                    self.cel_is_occupied[useless_cropped_cell] = 0
+                for cel in useless_cropped_cells:
+                    try:
+                        self.stm_cropped_cells_ind[stm] \
+                            .remove(cel)
+                    except ValueError:
+                        print('ERROR: Useless cell gone already')
+                    self.cel_is_occupied[cel] = 0
 
-                    for dim in range(2):
-                        try:
-                            self.stm_cropped_cells_ind[stm][dim] \
-                                .remove(useless_cropped_cell[dim])
-                        except ValueError:
-                            print('ERROR: Useless cell gone already')
                     abandoned += 1
 
         # Finally, update list of lists containing cropped cells for each stm
         # with positive population.
         self.stm_cropped_cells_n = [
-            len(self.stm_cropped_cells_ind[stm][0])
-
-            for stm in range(len(self.stm_population))
-            ]
+            len(crp) for crp in self.stm_cropped_cells_ind]
 
         return abandoned, sown
 
@@ -793,11 +778,9 @@ class Core(Parameters):
 
     def evolve_soil_deg(self):
         # soil degrades for cropped cells
-
-        cropped = np.concatenate(
-            self.stm_cropped_cells_ind, axis=1
-            ).astype('int')
-        self.cel_soil_deg[cropped[0], cropped[1]] += self.deg_rate
+        for cel in chain(*self.stm_cropped_cells_ind):
+            self.cel_soil_deg[cel] += self.deg_rate
+        # soil regenerates for climax-forest cells
         self.cel_soil_deg[self.cel_forest_state == 3] -= self.reg_rate
         self.cel_soil_deg[self.cel_soil_deg < 0] = 0
 
@@ -943,20 +926,21 @@ class Core(Parameters):
         elif l_a == 0:
             self.stm_centrality = [1] * (l_ic - 1)
 
-    def get_crop_income(self, bca):
+    def get_crop_income(self, cel_bca):
         # agricultural benefit of cropping
-
         for stm in self.populated_stm_list:
-            crops = bca[self.stm_cropped_cells_ind[stm][0],
-                        self.stm_cropped_cells_ind[stm][1]]
-            # EQUATION #
+            # get bca of settlement's cropped cells
+            bca = np.array(
+                [cel_bca[cel] for cel in self.stm_cropped_cells_ind[stm]])
 
+            # EQUATION #
             if self.crop_income_mode == "mean":
                 self.stm_crop_yield[stm] = self.r_bca_mean \
-                    * np.nanmean(crops[crops > 0])
+                    * np.nanmean(bca[bca > 0])
             elif self.crop_income_mode == "sum":
                 self.stm_crop_yield[stm] = self.r_bca_sum \
-                    * np.nansum(crops[crops > 0])
+                    * np.nansum(bca[bca > 0])
+
         self.stm_crop_yield = [
             0 if np.isnan(self.stm_crop_yield[index])
             else self.stm_crop_yield[index]
@@ -964,19 +948,19 @@ class Core(Parameters):
             for index in range(len(self.stm_crop_yield))
             ]
 
-    def get_eco_income(self, es):
+    def get_eco_income(self, cel_es):
         # benefit from ecosystem services of cells in influence
         # ##EQUATION###########################################################
         if self.eco_income_mode == "mean":
             for stm in self.populated_stm_list:
                 self.stm_eco_benefit[stm] = self.r_es_mean \
-                    * np.nanmean(es[self.stm_influenced_cells_ind[stm]])
+                    * np.nanmean(cel_es[self.stm_influenced_cells_ind[stm]])
 
         elif self.eco_income_mode == "sum":
             for stm in self.populated_stm_list:
                 r = self.r_es_sum
                 cells = self.stm_influenced_cells_ind[stm]
-                self.stm_eco_benefit[stm] = r * np.nansum(es[cells])
+                self.stm_eco_benefit[stm] = r * np.nansum(cel_es[cells])
                 self.stm_es_ag[stm] = r * np.nansum(self.cel_es_ag[cells])
                 self.stm_es_wf[stm] = r * np.nansum(self.cel_es_wf[cells])
                 self.stm_es_fs[stm] = r * np.nansum(self.cel_es_fs[cells])
@@ -1015,11 +999,11 @@ class Core(Parameters):
             for index, value in enumerate(self.stm_population)
         ]
 
-    def migration(self, es):
+    def migration(self, cel_es):
         # if outmigration rate exceeds threshold, found new settlement
         self.stm_migrants = [0] * self.n_settlements
         new_settlements = 0
-        vacant_lands = np.isfinite(es)
+        vacant_lands = np.isfinite(cel_es)
         influenced_cells = np.concatenate(
             self.stm_influenced_cells_ind, axis=1)
         vacant_lands[influenced_cells[0], influenced_cells[1]] = 0
@@ -1041,7 +1025,7 @@ class Core(Parameters):
                      **2 + (self.stm_positions[1][stm] -
                             self.cel_ind[1])**2))
 
-                utility = self.mig_ES_pref * es \
+                utility = self.mig_ES_pref * cel_es \
                     + self.mig_TC_pref * travel_cost
                 utofpio = \
                     utility[self.stm_pioneer_set[0], self.stm_pioneer_set[1]]
@@ -1063,35 +1047,26 @@ class Core(Parameters):
 
     def kill_settlements(self):
 
-        # BUG: settlements can be added twice,
-        # if they have neither population nor cropped cells.
-        # this might lead to unexpected consequences. see what happenes,
-        # when after adding all settlements, only unique ones are kept
-        # (not a problem when self.kill_stm_without_crops=False)
-
         killed_stm = 0
 
         # kill settlements if they have either no crops or no inhabitants:
         dead_stm_ind = [
-            i for i in range(len(self.stm_population))
+            stm for stm in range(self.n_settlements)
 
-            if self.stm_population[i] <= self.min_stm_size
+            if self.stm_population[stm] <= self.min_stm_size
             ]
 
         if self.kill_stm_without_crops:
             dead_stm_ind += [
-                i for i in range(len(self.stm_population))
+                stm for stm in range(self.n_settlements)
 
-                if (len(self.stm_cropped_cells_ind[i][0]) <= 0)
+                if not self.stm_cropped_cells_ind[stm]
                 ]
 
-        # the following expression only keeps the unique entries.
-        # might solve the problem.
+        # only keep unique entries
         dead_stm_ind = list(set(dead_stm_ind))
 
-        # remove entries from variables
-        # simple lists that can be deleted elementwise
-
+        # remove settlement attributes from attribute-lists
         for index in sorted(dead_stm_ind, reverse=True):
             self.n_settlements -= 1
             self.n_failed_stm += 1
@@ -1169,7 +1144,7 @@ class Core(Parameters):
         self.stm_positions = np.append(self.stm_positions,
                                               [[x], [y]], 1)
         self.stm_influenced_cells_ind.append([[x], [y]])
-        self.stm_cropped_cells_ind.append([[x], [y]])
+        self.stm_cropped_cells_ind.append([(x, y)])
 
         n = len(self.stm_adjacency)
         self.stm_adjacency = np.append(self.stm_adjacency, [[0] * n], 0)
@@ -1221,28 +1196,28 @@ class Core(Parameters):
             # ecosystem
             self.update_precipitation(t)
             # net primary productivity
-            npp = self.get_npp()
-            self.evolve_forest(npp)
+            cel_npp = self.get_npp()
+            self.evolve_forest(cel_npp)
 
             # water flow
             # NOTE: this is curious, only waterflow
             # is used, water level is abandoned.
-            wf = self.get_waterflow()[1]
+            cel_wf = self.get_waterflow()[1]
             # agricultural productivity
-            ag = self.get_ag(npp, wf)
+            cel_ag = self.get_ag(cel_npp, cel_wf)
             # ecosystem services
-            es = self.get_ecoserv(ag, wf)
+            cel_es = self.get_ecoserv(cel_ag, cel_wf)
             # benefit cost map for agriculture
-            bca = self.benefit_cost(ag)
+            cel_bca = self.benefit_cost(cel_ag)
 
             # society
             if len(self.stm_population) > 0:
                 # ag income
                 self.get_influenced_cells()
-                abandoned, sown = self.get_cropped_cells(bca)
-                self.get_crop_income(bca)
+                abandoned, sown = self.get_cropped_cells(cel_bca)
+                self.get_crop_income(cel_bca)
                 # es income
-                self.get_eco_income(es)
+                self.get_eco_income(cel_es)
                 self.evolve_soil_deg()
                 # tr income
                 self.update_pop_gradient()
@@ -1255,7 +1230,7 @@ class Core(Parameters):
                 self.get_real_income_pc()
                 # migration
                 self.get_pop_mig()
-                new_settlements = self.migration(es)
+                new_settlements = self.migration(cel_es)
                 killed_settlements = self.kill_settlements()
             else:
                 abandoned = sown = 0
@@ -1263,7 +1238,7 @@ class Core(Parameters):
             # update population counter on progress bar
             t_range.set_postfix({'population': sum(self.stm_population)})
 
-            self.step_output(t, npp, wf, ag, es, bca, abandoned, sown, built,
+            self.step_output(t, cel_npp, cel_wf, cel_ag, cel_es, cel_bca, abandoned, sown, built,
                              lost, new_settlements, killed_settlements)
 
 
@@ -1292,7 +1267,7 @@ class Core(Parameters):
         if self.output_geographic_data:
             pass
 
-    def step_output(self, t, npp, wf, ag, es, bca, abandoned, sown, built,
+    def step_output(self, t, cel_npp, cel_wf, cel_ag, cel_es, cel_bca, abandoned, sown, built,
                     lost, new_settlements, killed_settlements):
         """
         call different data saving routines depending on settings.
@@ -1301,16 +1276,16 @@ class Core(Parameters):
         ----------
         t: int
             Timestep number to append to save file path
-        npp: numpy array
+        cel_npp: numpy array
             Net Primary Productivity on cell basis
-        wf: numpy array
+        cel_wf: numpy array
             Water flow through cell
-        ag: numpy array
+        cel_ag: numpy array
             Agricultural productivity of cell
-        es: numpy array
+        cel_es: numpy array
             Ecosystem services of cell (that are summed and weighted to
             calculate ecosystems service income)
-        bca: numpy array
+        cel_bca: numpy array
             Benefit cost analysis of agriculture on cell.
         abandoned: int
             Number of cells that was abandoned in the previous time step
@@ -1332,7 +1307,7 @@ class Core(Parameters):
 
         if self.calc_aggregates:
             self.update_aggregates(
-                t, [npp, wf, ag, es, bca], built, lost,
+                t, [cel_npp, cel_wf, cel_ag, cel_es, cel_bca], built, lost,
                 new_settlements, killed_settlements
                 )
             self.update_traders_aggregates(t)
@@ -1340,7 +1315,7 @@ class Core(Parameters):
         # save maps of spatial data
 
         if self.output_geographic_data:
-            self.save_geographic_output(t, wf, abandoned, sown)
+            self.save_geographic_output(t, cel_wf, abandoned, sown)
 
         # save data on settlement basis
 
@@ -1378,7 +1353,7 @@ class Core(Parameters):
         with open(self.settlement_output_path(t), 'wb') as f:
             pkl.dump(data_frame, f)
 
-    def save_geographic_output(self, t, wf, abandoned, sown):
+    def save_geographic_output(self, t, cel_wf, abandoned, sown):
         """
         Organize Geographic data in dictionary (for separate layers
         of data) and save to file.
@@ -1387,7 +1362,7 @@ class Core(Parameters):
         ----------
         t: int
             Timestep number to append to save file path
-        wf: numpy array
+        cel_wf: numpy array
             Water flow through cell
         abandoned: int
             Number of cells that was abandoned in the previous time step
@@ -1399,7 +1374,7 @@ class Core(Parameters):
         tmpforest[np.isnan(self.cel_elev)] = 0
         data = {
             'forest': tmpforest,
-            'waterflow': wf,
+            'waterflow': cel_wf,
             'cells in influence': self.stm_influenced_cells_ind,
             'number of cells in influence': self.stm_influenced_cells_n,
             'cropped cells': self.stm_cropped_cells_ind,
@@ -1447,7 +1422,7 @@ class Core(Parameters):
 
     def update_aggregates(self, time, args, built, lost,
                                  new_settlements, killed_settlements):
-        # args = [npp, wf, ag, es, bca]
+        # args = [cel_npp, cel_wf, cel_ag, cel_es, cel_bca]
 
         total_population = sum(self.stm_population)
         try:
