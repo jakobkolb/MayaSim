@@ -143,22 +143,18 @@ class Core(Parameters):
         self.height, self.width = 914., 840.  # height and width in km
         self.width_cell = self.width / self.columns
         self.height_cell = self.height / self.rows
-        self.land_cell_ind = np.asarray(np.where(np.isfinite(self.cel_elev)))
-        self.n_land_cells = self.land_cell_ind.shape[1]
 
-        # lengh unit - total map is about 500 km wide
-        self.area = 516484. / self.n_land_cells
+        # find land cells
         self.cel_elev[:, 0] = np.inf
         self.cel_elev[:, -1] = np.inf
         self.cel_elev[0, :] = np.inf
         self.cel_elev[-1, :] = np.inf
-        # create a list of the index values i = (x, y) of the land
-        # patches with finite elevation h
-        self.land_cell_ind_list = [
-            i for i, h in np.ndenumerate(self.cel_elev)
+        self.land_cell_index = np.asarray(np.where(np.isfinite(self.cel_elev)))
+        self.land_cells = list(zip(*self.land_cell_index))
+        self.n_land_cells = self.land_cell_index.shape[1]
 
-            if np.isfinite(self.cel_elev[i])
-        ]
+        # lengh unit - total map is about 500 km wide
+        self.area = 516484. / self.n_land_cells
 
         # initialize soil degradation and population
         # gradient (influencing the forest)
@@ -180,7 +176,7 @@ class Core(Parameters):
         # The forest has three states: 3=climax forest,
         # 2=secondary regrowth, 1=cleared land.
 
-        for i in self.land_cell_ind_list:
+        for i in self.land_cells:
             self.cel_forest_state[i] = 3
 
         # Variables describing total amount of water and water flow
@@ -205,8 +201,8 @@ class Core(Parameters):
 
         self.n_settlements = n
         # distribute specified number of settlements on the map
-        self.stm_positions = self.land_cell_ind[
-            :, np.random.choice(len(self.land_cell_ind[1]),n).astype('int')
+        self.stm_positions = self.land_cell_index[
+            :, np.random.choice(len(self.land_cell_index[1]),n).astype('int')
             ]
 
         self.stm_age = [0] * n
@@ -221,25 +217,21 @@ class Core(Parameters):
         self.stm_mig_rate = [0.] * n
         self.stm_out_mig = [0] * n
         self.stm_migrants = [0] * n
-        self.stm_pioneer_set = []
         self.n_failed_stm = 0
 
-        # agricultural influence
+        # area of influence
         self.stm_influenced_cells_n = [0] * n
-        self.stm_influenced_area = [0.] * n
-        self.cel_ind = np.indices((self.rows, self.columns))
-        self.stm_influenced_cells_ind = [None] * n  # will be a list of lists
+        self.stm_influence_rad = [0.] * n
+        self.stm_influenced_cells = [None] * n # will be list of lists
 
-        self.stm_cropped_cells_ind = [None] * n
-
-        # for now, cropped cells are only the settlement positions.
-        # first cropped cells are added at the first call of
-        # get_cropped_cells()
-        for stm, (x, y) in enumerate(zip(*self.stm_positions)):
-            self.stm_cropped_cells_ind[stm] = [(x, y)]
-
+        # agriculture/cropping
         self.cel_is_cropped = np.zeros((self.rows, self.columns))
         self.stm_cropped_cells_n = [0] * n
+        self.stm_cropped_cells = [None] * n # will be list of lists
+        # add settlement positions until get_cropped_cells() is first called
+        for stm, (x, y) in enumerate(zip(*self.stm_positions)):
+            self.stm_cropped_cells[stm] = [(x, y)]
+
         self.stm_crop_yield = [0.] * n
         self.stm_eco_benefit = [0.] * n
 
@@ -342,7 +334,7 @@ class Core(Parameters):
         max_x, max_y = self.rows, self.columns
         # pylint: disable-next=unused-variable
         err, self.cel_flow, self.cel_water = \
-            f90routines.f90waterflow(self.land_cell_ind,
+            f90routines.f90waterflow(self.land_cell_index,
                                      self.cel_elev,
                                      rain_volume,
                                      self.f90neighbourhood,
@@ -367,10 +359,10 @@ class Core(Parameters):
 
             # vectorized random number generation for use in 'Degradation'
             degradation_fortune = \
-                np.random.random(len(self.land_cell_ind_list))
+                np.random.random(len(self.land_cells))
             probdec = self.natprobdec * (2 * self.cel_pop_gradient + 1)
 
-            for n, i in enumerate(self.land_cell_ind_list):
+            for n, i in enumerate(self.land_cells):
                 if not np.isnan(self.cel_elev[i]):
 
                     # Degradation:
@@ -410,7 +402,7 @@ class Core(Parameters):
 
         # calculate cleared land neighbours for output:
         if self.veg_rainfall > 0:
-            for i in self.land_cell_ind_list:
+            for i in self.land_cells:
                 self.cel_cleared_neighs[i] = \
                     np.sum(self.cel_forest_state[
                         i[0] - 1:i[0] + 2,
@@ -493,36 +485,39 @@ class Core(Parameters):
 
     def benefit_cost(self, cel_ag):
         # Benefit cost assessment
-
         return self.max_yield * (1 - self.origin_shift * np.exp(
             np.float128(-self.slope_yield * cel_ag)))
 
     def get_influenced_cells(self):
         """
-        creates a list of cells for each stm that are under its influence.
-        these are the cells that are closer than population^0.8/60 (which is
-        not explained any further... change denominator to 80 and max value to
-        30 from eyeballing the results
+        For all settlements, calculate influence radius write a list of
+        cells within that radius to ``self.stm_influenced_cells``.
+
+        NOTE: these are the cells that are closer than population^0.8/60
+        (which is not explained any further... change denominator to 80 and
+        max value to 30 from eyeballing the results
         """
+        # calculate influence radius
         # EQUATION ############################################################
-        self.stm_influenced_area = [
-            (x**0.8) / 60. for x in self.stm_population
-            ]
-        self.stm_influenced_area = [
-            value if value < 40. else 40. for value in self.stm_influenced_area
-            ]
+        self.stm_influence_rad = [p**0.8 / 60. for p in self.stm_population]
+        self.stm_influence_rad = \
+            [rad if rad < 40. else 40. for rad in self.stm_influence_rad]
         # EQUATION ############################################################
 
-        for stm, (x, y) in enumerate(zip(*self.stm_positions)):
-            distance = np.sqrt(
-                (self.width_cell * (x - self.cel_ind[0]))**2
-                + (self.height_cell * (y - self.cel_ind[1]))**2)
-            stencil = distance <= self.stm_influenced_area[stm]
-            self.stm_influenced_cells_ind[stm] = \
-                list(zip(*self.cel_ind[:, stencil]))
+        # get cells within influence radius
+        for stm, (y, x) in enumerate(zip(*self.stm_positions)):
+            # create ogrid centered around settlement
+            Y, X = np.ogrid[-y:self.rows-y, -x:self.columns-x]
+            # mask cells within influence radius, assuming square cells
+            influence_mask = X*X + Y*Y <= \
+                self.stm_influence_rad[stm]**2/self.area
+            # get coordinates of influenced cells as list of tuples (y,x)
+            self.stm_influenced_cells[stm] = \
+                list(zip(*np.nonzero(influence_mask)))
 
+        # count influenced cells
         self.stm_influenced_cells_n = \
-            [len(ifd) for ifd in self.stm_influenced_cells_ind]
+            [len(ifd) for ifd in self.stm_influenced_cells]
 
     # pylint: disable=too-many-locals
     def get_cropped_cells(self, cel_bca):
@@ -541,7 +536,7 @@ class Core(Parameters):
 
         # number of currently cropped cells for each settlement
         self.stm_cropped_cells_n = \
-            [len(crp) for crp in self.stm_cropped_cells_ind]
+            [len(crp) for crp in self.stm_cropped_cells]
 
         # agricultural population density (people per cropped land)
         # determines the number of cells that can be cropped.
@@ -554,42 +549,42 @@ class Core(Parameters):
             ]
 
         # cel_is_occupied is a mask of all cropped cells of all settlements
-        for cel in chain(*self.stm_cropped_cells_ind):
+        for cel in chain(*self.stm_cropped_cells):
             self.cel_is_cropped[cel] = 1
 
         # the age of settlements is increased here.
-        self.stm_age = [x + 1 for x in self.stm_age]
+        self.stm_age = [age + 1 for age in self.stm_age]
 
         # for each settlement: which cells to crop ?
         # calculate utility first! This can be accelerated, if calculations
         # are only done in 40 km radius.
 
-        for stm, (x, y) in enumerate(zip(*self.stm_positions)):
+        for stm, (y, x) in enumerate(zip(*self.stm_positions)):
 
             # get arrays for vectorized utility calculation
-            infd_cells = np.transpose(np.array(
-                self.stm_influenced_cells_ind[stm]))
+            infd_index = np.transpose(np.array(
+                self.stm_influenced_cells[stm]))
             distance = np.sqrt(
-                (self.width_cell * (x - infd_cells[0]))**2
-                + (self.height_cell * (y - infd_cells[1]))**2)
+                (self.height_cell * (y - infd_index[0]))**2
+                + (self.width_cell * (x - infd_index[1]))**2)
 
             # EQUATION ########################################################
             utility = (
-                cel_bca[infd_cells[0], infd_cells[1]] - self.estab_cost
+                cel_bca[infd_index[0], infd_index[1]] - self.estab_cost
                 - self.ag_travel_cost * distance / np.sqrt(
                     self.stm_population[stm])
                 ).tolist()
             # EQUATION ########################################################
 
             # do rest of operations using tuple-lists and list-comps
-            infd_cells = self.stm_influenced_cells_ind[stm]
-            available = [self.cel_is_cropped[cel] == 0 for cel in infd_cells]
+            infd_index = self.stm_influenced_cells[stm]
+            available = [self.cel_is_cropped[cel] == 0 for cel in infd_index]
 
             # jointly sort utilities, availability and cells such that cells
             # with highest utility are first.
             sorted_utility, sorted_available, sorted_cells = \
                 list(zip(*sorted(
-                    list(zip(utility, available, infd_cells)), reverse=True)))
+                    list(zip(utility, available, infd_index)), reverse=True)))
             # of these sorted lists, sort filter only available cells
             available_util = list(
                 compress(list(sorted_utility), list(sorted_available)))
@@ -597,10 +592,10 @@ class Core(Parameters):
                 compress(list(sorted_cells), list(sorted_available)))
 
             # save local copy of all cropped cells
-            cropped_cells = self.stm_cropped_cells_ind[stm]
+            cropped_cells = self.stm_cropped_cells[stm]
             # select utilities for these cropped cells
             cropped_utils = [
-                utility[infd_cells.index(cel)] if cel in infd_cells else -1
+                utility[infd_index.index(cel)] if cel in infd_index else -1
 
                 for cel in cropped_cells
                 ]
@@ -623,7 +618,7 @@ class Core(Parameters):
 
             for n in range(min([number_of_new_cells, len(available_util)])):
                 if available_util[n] > 0:
-                    self.stm_cropped_cells_ind[stm].append(available_cells[n])
+                    self.stm_cropped_cells[stm].append(available_cells[n])
                     self.cel_is_cropped[available_cells[n]] = 1
 
                     sown += 1
@@ -652,7 +647,7 @@ class Core(Parameters):
                     for n in range(min([number_of_lost_cells,
                                         len(occupied_cells)])):
 
-                        self.stm_cropped_cells_ind[stm] \
+                        self.stm_cropped_cells[stm] \
                             .remove(occupied_cells[n])
                         self.cel_is_cropped[occupied_cells[n]] = 0
 
@@ -666,13 +661,13 @@ class Core(Parameters):
                     occupied_cells[i] for i in range(len(occupied_cells))
 
                     if occupied_util[i] < 0
-                    and occupied_cells[i] in self.stm_cropped_cells_ind[stm]
+                    and occupied_cells[i] in self.stm_cropped_cells[stm]
                     ]
 
                 # and release them.
                 for cel in useless_cropped_cells:
                     try:
-                        self.stm_cropped_cells_ind[stm] \
+                        self.stm_cropped_cells[stm] \
                             .remove(cel)
                     except ValueError:
                         print('ERROR: Useless cell gone already')
@@ -683,7 +678,7 @@ class Core(Parameters):
         # Finally, update list of lists containing cropped cells for each stm
         # with positive population.
         self.stm_cropped_cells_n = [
-            len(crp) for crp in self.stm_cropped_cells_ind]
+            len(crp) for crp in self.stm_cropped_cells]
 
         return abandoned, sown
 
@@ -751,22 +746,22 @@ class Core(Parameters):
         # pop gradient quantifies the disturbance of the forest by population
         self.cel_pop_gradient = np.zeros((self.rows, self.columns))
 
-        for stm, (x, y) in enumerate(zip(*self.stm_positions)):
-            infd_cells = np.transpose(np.array(
-                self.stm_influenced_cells_ind[stm]))
+        for stm, (y, x) in enumerate(zip(*self.stm_positions)):
+            infd_index = np.transpose(np.array(
+                self.stm_influenced_cells[stm]))
             distance = np.sqrt(self.area * (
-                (x - infd_cells[0])**2
-                + (y - infd_cells[1])**2))
+                (y - infd_index[0])**2
+                + (x - infd_index[1])**2))
 
             # EQUATION ########################################################
-            self.cel_pop_gradient[infd_cells[0], infd_cells[1]] += \
+            self.cel_pop_gradient[infd_index[0], infd_index[1]] += \
                 self.stm_population[stm] / (300 * (1 + distance))
             # EQUATION ########################################################
             self.cel_pop_gradient[self.cel_pop_gradient > 15] = 15
 
     def evolve_soil_deg(self):
         # soil degrades for cropped cells
-        for cel in chain(*self.stm_cropped_cells_ind):
+        for cel in chain(*self.stm_cropped_cells):
             self.cel_soil_deg[cel] += self.deg_rate
         # soil regenerates for climax-forest cells
         self.cel_soil_deg[self.cel_forest_state == 3] -= self.reg_rate
@@ -797,11 +792,11 @@ class Core(Parameters):
         self.stm_degree = g.out_degree()
         # settlements with rank>0 are traders and establish links to neighbours
 
-        for stm, (x, y) in enumerate(zip(*self.stm_positions)):
+        for stm, (y, x) in enumerate(zip(*self.stm_positions)):
             if self.stm_degree[stm] < self.stm_rank[stm]:
                 distances = np.sqrt(self.area * (
-                    (x - self.stm_positions[0]) ** 2
-                    + (y - self.stm_positions[1]) ** 2))
+                    (y - self.stm_positions[0]) ** 2
+                    + (x - self.stm_positions[1]) ** 2))
 
                 if self.stm_rank[stm] == 3:
                     threshold = 31. * (
@@ -913,7 +908,7 @@ class Core(Parameters):
 
     def get_crop_income(self, cel_bca):
         # agricultural benefit of cropping
-        for stm, crpd_cells in enumerate(self.stm_cropped_cells_ind):
+        for stm, crpd_cells in enumerate(self.stm_cropped_cells):
             # get bca of settlement's cropped cells
             bca = np.array([cel_bca[cel] for cel in crpd_cells])
 
@@ -936,13 +931,13 @@ class Core(Parameters):
         # benefit from ecosystem services of cells in influence
         # ##EQUATION###########################################################
         if self.eco_income_mode == "mean":
-            for stm, infd_cells in enumerate(self.stm_influenced_cells_ind):
+            for stm, infd_cells in enumerate(self.stm_influenced_cells):
                 infd_index = np.transpose(np.array(infd_cells))
                 self.stm_eco_benefit[stm] = self.r_es_mean \
                     * np.nanmean(cel_es[infd_index])
 
         elif self.eco_income_mode == "sum":
-            for stm, infd_cells in enumerate(self.stm_influenced_cells_ind):
+            for stm, infd_cells in enumerate(self.stm_influenced_cells):
                 r = self.r_es_sum
                 infd_index = np.transpose(np.array(infd_cells))
                 self.stm_eco_benefit[stm] = r * np.nansum(cel_es[infd_index])
@@ -991,12 +986,12 @@ class Core(Parameters):
 
         # create mask of cells that are not influenced by any settlement
         uninfluenced = np.isfinite(cel_es)
-        for cel in chain(*self.stm_influenced_cells_ind):
+        for cel in chain(*self.stm_influenced_cells):
             uninfluenced[cel] = 0
         # create index-array of uninfluenced cells
         uninfd_index = np.asarray(np.where(uninfluenced == 1))
 
-        for stm, (x,y) in enumerate(zip(*self.stm_positions)):
+        for stm, (y, x) in enumerate(zip(*self.stm_positions)):
 
             if (self.stm_out_mig[stm] > 400 and len(uninfd_index[0]) > 0
                     and np.random.rand() <= 0.5):
@@ -1004,17 +999,16 @@ class Core(Parameters):
                 mig_pop = self.stm_out_mig[stm]
                 self.stm_migrants[stm] = mig_pop
                 self.stm_population[stm] -= mig_pop
-                self.stm_pioneer_set = \
+                pioneer_set = \
                     uninfd_index[:, np.random.choice(len(uninfd_index[0]), 75)]
 
-                travel_cost = np.sqrt(self.area * (
-                    (x - self.cel_ind[0])**2 + (y -self.cel_ind[1])**2))
-
-                utility = self.mig_ES_pref * cel_es \
-                    + self.mig_TC_pref * travel_cost
-                utofpio = \
-                    utility[self.stm_pioneer_set[0], self.stm_pioneer_set[1]]
-                new_loc = self.stm_pioneer_set[:, np.nanargmax(utofpio)]
+                # calculate pioneer utilities from travel cost and eco-services
+                pio_tc = np.sqrt(self.area * (
+                    (y - pioneer_set[0])**2 + (x - pioneer_set[1])**2))
+                pio_es = cel_es[pioneer_set[0], pioneer_set[1]]
+                pio_ut = self.mig_ES_pref * pio_es + self.mig_TC_pref * pio_tc
+                # choose pioneer with highest utility as new location
+                new_loc = pioneer_set[:, np.nanargmax(pio_ut)]
 
                 neighbours = np.sqrt(self.area * (
                     (new_loc[0] - self.stm_positions[0]) ** 2
@@ -1045,7 +1039,7 @@ class Core(Parameters):
             dead_stm_ind += [
                 stm for stm in range(self.n_settlements)
 
-                if not self.stm_cropped_cells_ind[stm]
+                if not self.stm_cropped_cells[stm]
                 ]
 
         # only keep unique entries
@@ -1062,7 +1056,7 @@ class Core(Parameters):
             del self.stm_mig_rate[index]
             del self.stm_out_mig[index]
             del self.stm_influenced_cells_n[index]
-            del self.stm_influenced_area[index]
+            del self.stm_influence_rad[index]
             del self.stm_cropped_cells_n[index]
             del self.stm_crop_yield[index]
             del self.stm_eco_benefit[index]
@@ -1072,8 +1066,8 @@ class Core(Parameters):
             del self.stm_centrality[index]
             del self.stm_trade_income[index]
             del self.stm_real_income_pc[index]
-            del self.stm_influenced_cells_ind[index]
-            del self.stm_cropped_cells_ind[index]
+            del self.stm_influenced_cells[index]
+            del self.stm_cropped_cells[index]
             del self.stm_es_ag[index]
             del self.stm_es_wf[index]
             del self.stm_es_fs[index]
@@ -1093,7 +1087,7 @@ class Core(Parameters):
 
         return killed_stm
 
-    def spawn_settlement(self, x, y, mig_pop):
+    def spawn_settlement(self, y, x, mig_pop):
         """
         Spawn a new stm at given location with
         given population and append it to all necessary lists.
@@ -1111,9 +1105,9 @@ class Core(Parameters):
         # extend all variables to include new stm
         self.n_settlements += 1
         self.stm_positions = np.append(self.stm_positions,
-                                              [[x], [y]], 1)
-        self.stm_influenced_cells_ind.append([(x, y)])
-        self.stm_cropped_cells_ind.append([(x, y)])
+                                              [[y], [x]], 1)
+        self.stm_influenced_cells.append([(y, x)])
+        self.stm_cropped_cells.append([(y, x)])
 
         n = len(self.stm_adjacency)
         self.stm_adjacency = np.append(self.stm_adjacency, [[0] * n], 0)
@@ -1126,7 +1120,7 @@ class Core(Parameters):
         self.stm_mig_rate.append(0)
         self.stm_out_mig.append(0)
         self.stm_influenced_cells_n.append(0)
-        self.stm_influenced_area.append(0)
+        self.stm_influence_rad.append(0)
         self.stm_cropped_cells_n.append(1)
         self.stm_crop_yield.append(0)
         self.stm_eco_benefit.append(0)
@@ -1304,7 +1298,7 @@ class Core(Parameters):
         """
         colums = [
             'population', 'real income', 'ag income', 'es income',
-            'trade income', 'x position', 'y position', 'out migration',
+            'trade income', 'y position', 'x position', 'out migration',
             'degree'
             ]
         data = [
@@ -1343,16 +1337,16 @@ class Core(Parameters):
         data = {
             'forest': tmpforest,
             'waterflow': cel_wf,
-            'cells in influence': self.stm_influenced_cells_ind,
+            'cells in influence': self.stm_influenced_cells,
             'number of cells in influence': self.stm_influenced_cells_n,
-            'cropped cells': self.stm_cropped_cells_ind,
+            'cropped cells': self.stm_cropped_cells,
             'number of cropped cells': self.stm_cropped_cells_n,
             'abandoned sown': np.array([abandoned, sown]),
             'soil degradation': self.cel_soil_deg,
             'population gradient': self.cel_pop_gradient,
             'adjacency': self.stm_adjacency,
-            'x positions': list(self.stm_positions[0]),
-            'y positions': list(self.stm_positions[1]),
+            'y positions': list(self.stm_positions[0]),
+            'x positions': list(self.stm_positions[1]),
             'population': self.stm_population,
             'elev': self.cel_elev,
             'rank': self.stm_rank
