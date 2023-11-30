@@ -1,11 +1,13 @@
-import operator
+# Authors: Jakob J. Kolb, Fritz Kühlein
+
 import os
-import sys
 from itertools import compress, chain
+from random import sample
 
 import pickle as pkl
 import networkx as nx
 import numpy as np
+from numpy.typing import NDArray
 import pandas
 import pkg_resources
 from scipy import ndimage, sparse
@@ -35,9 +37,9 @@ class Core(Parameters):
     """
     # pylint: disable=too-many-statements
     def __init__(self,
-                 n=30,
-                 calc_aggregates=True,
-                 output_path=None):
+                 n: int = 30,
+                 calc_aggregates: bool = True,
+                 output_path: str = None):
         """
         Returns an instance of the MayaSim model.
 
@@ -70,11 +72,9 @@ class Core(Parameters):
         # Aggregate data will be kept in one data structure
         # to be read out, when the model run finished.
 
-        if output_path is not None:
-
+        if output_path:
             # remove file ending
             self.output_path = output_path.rsplit('.', 1)[0]
-
             # create callable output paths
             self.settlement_output_path = \
                 lambda i: self.output_path + \
@@ -82,7 +82,6 @@ class Core(Parameters):
             self.geographic_output_path = \
                 lambda i: self.output_path + \
                 f'geographic_data_{i:03d}.pkl'
-
             # set switches for output generation
             self.output_geographic_data = True
             self.output_settlement_data = True
@@ -151,7 +150,7 @@ class Core(Parameters):
         self.cel_elev[-1, :] = np.inf
         self.land_cell_index = np.asarray(np.where(np.isfinite(self.cel_elev)))
         self.land_cells = list(zip(*self.land_cell_index))
-        self.n_land_cells = self.land_cell_index.shape[1]
+        self.n_land_cells = len(self.land_cells)
 
         # lengh unit - total map is about 500 km wide
         self.area = 516484. / self.n_land_cells
@@ -200,10 +199,8 @@ class Core(Parameters):
         self.cel_pop_gradient = np.zeros((self.rows, self.columns))
 
         self.n_settlements = n
-        # distribute specified number of settlements on the map
-        self.stm_positions = self.land_cell_index[
-            :, np.random.choice(len(self.land_cell_index[1]),n).astype('int')
-            ]
+        # randomly distribute specified number of settlements on the map
+        self.stm_positions = sample(self.land_cells, self.n_settlements)
 
         self.stm_age = [0] * n
 
@@ -229,8 +226,8 @@ class Core(Parameters):
         self.stm_cropped_cells_n = [0] * n
         self.stm_cropped_cells = [None] * n # will be list of lists
         # add settlement positions until get_cropped_cells() is first called
-        for stm, (x, y) in enumerate(zip(*self.stm_positions)):
-            self.stm_cropped_cells[stm] = [(x, y)]
+        for stm, (y, x) in enumerate(self.stm_positions):
+            self.stm_cropped_cells[stm] = [(y, x)]
 
         self.stm_crop_yield = [0.] * n
         self.stm_eco_benefit = [0.] * n
@@ -275,7 +272,7 @@ class Core(Parameters):
 
         return run_variables
 
-    def update_precipitation(self, t):
+    def update_precipitation(self, timestep: int):
         """
         Modulates the initial precip dataset with a 24 timestep period.
         Returns a field of rainfall values for each cell.
@@ -290,7 +287,8 @@ class Core(Parameters):
             self.cel_precip = \
                 self.cel_precip_mean * (
                     1 + self.precip_amplitude * self.precip_variation[
-                        (np.ceil(t / self.climate_var) % 8).astype(int)]) \
+                        (np.ceil(timestep / self.climate_var) % 8)
+                        .astype(int)]) \
                 - self.veg_rainfall * self.cel_cleared_neighs
         else:
             self.cel_precip = \
@@ -300,7 +298,7 @@ class Core(Parameters):
         # check if system time is in drought period
         drought = False
         for drought_time in self.drought_times:
-            if drought_time[0] < t <= drought_time[1]:
+            if drought_time[0] < timestep <= drought_time[1]:
                 drought = True
 
         # if so, decrease precipitation by factor percentage given by
@@ -334,17 +332,18 @@ class Core(Parameters):
         max_x, max_y = self.rows, self.columns
         # pylint: disable-next=unused-variable
         err, self.cel_flow, self.cel_water = \
-            f90routines.f90waterflow(self.land_cell_index,
-                                     self.cel_elev,
-                                     rain_volume,
-                                     self.f90neighbourhood,
-                                     max_x,
-                                     max_y,
-                                     self.n_land_cells)
+            f90routines.f90waterflow(
+                self.land_cell_index,
+                self.cel_elev,
+                rain_volume,
+                self.f90neighbourhood,
+                max_x,
+                max_y,
+                self.n_land_cells)
 
         return self.cel_water, self.cel_flow
 
-    def evolve_forest(self, cel_npp):
+    def evolve_forest(self, cel_npp: NDArray):
         """
         TODO: add docstring
         """
@@ -427,7 +426,7 @@ class Core(Parameters):
 
         return cel_npp
 
-    def get_ag(self, cel_npp, cel_wf):
+    def get_ag(self, cel_npp: NDArray, cel_wf: NDArray):
         """
         agricultural productivity is calculated via a
         linear additive model from
@@ -443,7 +442,7 @@ class Core(Parameters):
                 - self.cel_soil_deg)
         # EQUATION ############################################################
 
-    def get_ecoserv(self, cel_ag, cel_wf):
+    def get_ecoserv(self, cel_ag: NDArray, cel_wf: NDArray):
         """
         Ecosystem Services are calculated via a linear
         additive model from agricultural productivity (cel_ag),
@@ -483,7 +482,7 @@ class Core(Parameters):
     # The Society
     ###########################################################################
 
-    def benefit_cost(self, cel_ag):
+    def benefit_cost(self, cel_ag: NDArray):
         # Benefit cost assessment
         return self.max_yield * (1 - self.origin_shift * np.exp(
             np.float128(-self.slope_yield * cel_ag)))
@@ -505,7 +504,7 @@ class Core(Parameters):
         # EQUATION ############################################################
 
         # get cells within influence radius
-        for stm, (y, x) in enumerate(zip(*self.stm_positions)):
+        for stm, (y, x) in enumerate(self.stm_positions):
             # create ogrid centered around settlement
             Y, X = np.ogrid[-y:self.rows-y, -x:self.columns-x]
             # mask cells within influence radius, assuming square cells
@@ -520,7 +519,7 @@ class Core(Parameters):
             [len(ifd) for ifd in self.stm_influenced_cells]
 
     # pylint: disable=too-many-locals
-    def get_cropped_cells(self, cel_bca):
+    def get_cropped_cells(self, cel_bca: NDArray):
         """
         Updates the cropped cells for each stm with positive population.
         Calculates the utility for each cell (depending on distance from
@@ -559,11 +558,10 @@ class Core(Parameters):
         # calculate utility first! This can be accelerated, if calculations
         # are only done in 40 km radius.
 
-        for stm, (y, x) in enumerate(zip(*self.stm_positions)):
+        for stm, (y, x) in enumerate(self.stm_positions):
 
             # get arrays for vectorized utility calculation
-            infd_index = np.transpose(np.array(
-                self.stm_influenced_cells[stm]))
+            infd_index = np.array(self.stm_influenced_cells[stm]).T
             distance = np.sqrt(
                 (self.height_cell * (y - infd_index[0]))**2
                 + (self.width_cell * (x - infd_index[1]))**2)
@@ -746,9 +744,8 @@ class Core(Parameters):
         # pop gradient quantifies the disturbance of the forest by population
         self.cel_pop_gradient = np.zeros((self.rows, self.columns))
 
-        for stm, (y, x) in enumerate(zip(*self.stm_positions)):
-            infd_index = np.transpose(np.array(
-                self.stm_influenced_cells[stm]))
+        for stm, (y, x) in enumerate(self.stm_positions):
+            infd_index = np.array(self.stm_influenced_cells[stm]).T
             distance = np.sqrt(self.area * (
                 (y - infd_index[0])**2
                 + (x - infd_index[1])**2))
@@ -788,57 +785,42 @@ class Core(Parameters):
         adj[adj == -1] = 0
         built_links = 0
         lost_links = 0
-        g = nx.from_numpy_array(adj, create_using=nx.DiGraph())
-        self.stm_degree = g.out_degree()
-        # settlements with rank>0 are traders and establish links to neighbours
+        graph = nx.from_numpy_array(adj, create_using=nx.DiGraph())
+        self.stm_degree = graph.out_degree()
 
-        for stm, (y, x) in enumerate(zip(*self.stm_positions)):
+        # create index-array of stm positions to vectorize distance calculation
+        positions = np.array(self.stm_positions).T
+
+        for stm, (y, x) in enumerate(self.stm_positions):
+            # stm with rank > 0 are traders and establish links to neighbours
+            # NOTE: only if they do not already have 'rank' trading partners?
             if self.stm_degree[stm] < self.stm_rank[stm]:
-                distances = np.sqrt(self.area * (
-                    (y - self.stm_positions[0]) ** 2
-                    + (x - self.stm_positions[1]) ** 2))
+                # calculate maximum trading radius depending on trade rank
+                trade_radius = 31. * (
+                    getattr(self, f'thresh_rank_{self.stm_rank[stm]}', 0)
+                    / self.thresh_rank_3 * 0.5 + 1.)
 
-                if self.stm_rank[stm] == 3:
-                    threshold = 31. * (
-                        self.thresh_rank_3 / self.thresh_rank_3 * 0.5 + 1.)
-                elif self.stm_rank[stm] == 2:
-                    threshold = 31. * (
-                        self.thresh_rank_2 / self.thresh_rank_3 * 0.5 + 1.)
-                elif self.stm_rank[stm] == 1:
-                    threshold = 31. * (
-                        self.thresh_rank_1 / self.thresh_rank_3 * 0.5 + 1.)
-                else:
-                    threshold = 0
+                # calculate distances to other settlements
+                distances = (y - positions[0]) ** 2 + (x - positions[1]) ** 2
 
-                # don't chose yourself as nearest neighbor
-                distances[stm] = 2 * threshold
+                # collect neighbors within radius, but not self
+                # and omit those that are already connected.
+                candidates = (
+                    (0.5 < (distances <= trade_radius**2/self.area))
+                    & (self.stm_adjacency[stm] == 0)
+                    )
 
-                # collect close enough neighbors and omit those that are
-                # already connected.
-                a = distances <= threshold
-                b = self.stm_adjacency[stm] == 0
-                nearby = np.array(list(map(operator.and_, a, b)))
-
-                # if there are traders nearby,
-                # connect to the one with highest population
-
-                if sum(nearby) != 0:
-                    try:
-                        new_partner = np.nanargmax(
-                            self.stm_population * nearby)
-                        self.stm_adjacency[stm, new_partner] = 1
-                        self.stm_adjacency[new_partner, stm] = -1
-                        built_links += 1
-                    except ValueError:
-                        print('ERROR in new partner')
-                        print(np.shape(self.stm_population),
-                              np.shape(self.stm_positions[0]))
-                        sys.exit(-1)
+                # if trading candidates found, connect to largest
+                if sum(candidates) != 0:
+                    new_partner = np.argmax(self.stm_population * candidates)
+                    self.stm_adjacency[stm, new_partner] = 1
+                    self.stm_adjacency[new_partner, stm] = -1
+                    built_links += 1
 
             # settlements that cannot maintain their trade links lose them:
             elif self.stm_degree[stm] > self.stm_rank[stm]:
                 # get neighbors of node
-                neighbors = g.successors(stm)
+                neighbors = graph.successors(stm)
                 # find smallest of neighbors
                 smallest_neighbor = self.stm_population.index(
                     min(self.stm_population[nb] for nb in neighbors))
@@ -906,7 +888,7 @@ class Core(Parameters):
         elif l_a == 0:
             self.stm_centrality = [1] * (l_ic - 1)
 
-    def get_crop_income(self, cel_bca):
+    def get_crop_income(self, cel_bca: NDArray):
         # agricultural benefit of cropping
         for stm, crpd_cells in enumerate(self.stm_cropped_cells):
             # get bca of settlement's cropped cells
@@ -927,19 +909,19 @@ class Core(Parameters):
             for index in range(len(self.stm_crop_yield))
             ]
 
-    def get_eco_income(self, cel_es):
+    def get_eco_income(self, cel_es: NDArray):
         # benefit from ecosystem services of cells in influence
         # ##EQUATION###########################################################
         if self.eco_income_mode == "mean":
             for stm, infd_cells in enumerate(self.stm_influenced_cells):
-                infd_index = np.transpose(np.array(infd_cells))
+                infd_index = np.array(infd_cells).T
                 self.stm_eco_benefit[stm] = self.r_es_mean \
                     * np.nanmean(cel_es[infd_index])
 
         elif self.eco_income_mode == "sum":
             for stm, infd_cells in enumerate(self.stm_influenced_cells):
                 r = self.r_es_sum
-                infd_index = np.transpose(np.array(infd_cells))
+                infd_index = np.array(infd_cells).T
                 self.stm_eco_benefit[stm] = r * np.nansum(cel_es[infd_index])
                 self.stm_es_ag[stm] = r * np.nansum(self.cel_es_ag[infd_index])
                 self.stm_es_wf[stm] = r * np.nansum(self.cel_es_wf[infd_index])
@@ -984,14 +966,16 @@ class Core(Parameters):
         self.stm_migrants = [0] * self.n_settlements
         new_settlements = 0
 
-        # create mask of cells that are not influenced by any settlement
+        # create mask of land cells that are not influenced by any settlement
         uninfluenced = np.isfinite(cel_es)
         for cel in chain(*self.stm_influenced_cells):
             uninfluenced[cel] = 0
         # create index-array of uninfluenced cells
         uninfd_index = np.asarray(np.where(uninfluenced == 1))
+        # create index-array of stm positions to vectorize distance calculation
+        positions = np.array(self.stm_positions).T
 
-        for stm, (y, x) in enumerate(zip(*self.stm_positions)):
+        for stm, (y, x) in enumerate(self.stm_positions):
 
             if (self.stm_out_mig[stm] > 400 and len(uninfd_index[0]) > 0
                     and np.random.rand() <= 0.5):
@@ -1008,18 +992,15 @@ class Core(Parameters):
                 pio_es = cel_es[pioneer_set[0], pioneer_set[1]]
                 pio_ut = self.mig_ES_pref * pio_es + self.mig_TC_pref * pio_tc
                 # choose pioneer with highest utility as new location
-                new_loc = pioneer_set[:, np.nanargmax(pio_ut)]
+                new_y, new_x = pioneer_set[:, np.argmax(pio_ut)]
 
-                neighbours = np.sqrt(self.area * (
-                    (new_loc[0] - self.stm_positions[0]) ** 2
-                    + (new_loc[1] - self.stm_positions[1]) ** 2
-                    )) <= 7.5
-
+                # check if other settlements are near new location
+                neighbours = (
+                    (new_y - positions[0])**2 + (new_x - positions[1])**2
+                    ) <= 7.5 **2/self.area
+                # if not, spawn settlement
                 if np.sum(neighbours) == 0:
-                    self.spawn_settlement(new_loc[0], new_loc[1], mig_pop)
-                    index = ((uninfd_index[0, :] == new_loc[0])
-                             & (uninfd_index[1, :] == new_loc[1]))
-                    np.delete(uninfd_index, int(np.where(index)[0]), 1)
+                    self.spawn_settlement(new_y, new_x, mig_pop)
                     new_settlements += 1
 
         return new_settlements
@@ -1049,6 +1030,7 @@ class Core(Parameters):
         for index in sorted(dead_stm_ind, reverse=True):
             self.n_settlements -= 1
             self.n_failed_stm += 1
+            del self.stm_positions[index]
             del self.stm_age[index]
             del self.stm_birth_rate[index]
             del self.stm_death_rate[index]
@@ -1078,16 +1060,13 @@ class Core(Parameters):
             killed_stm += 1
 
         # special cases:
-        self.stm_positions = \
-            np.delete(self.stm_positions,
-                      dead_stm_ind, axis=1)
         self.stm_adjacency = \
             np.delete(np.delete(self.stm_adjacency,dead_stm_ind, axis=0),
                       dead_stm_ind, axis=1)
 
         return killed_stm
 
-    def spawn_settlement(self, y, x, mig_pop):
+    def spawn_settlement(self, y: int, x: int, mig_pop: int):
         """
         Spawn a new stm at given location with
         given population and append it to all necessary lists.
@@ -1104,8 +1083,7 @@ class Core(Parameters):
 
         # extend all variables to include new stm
         self.n_settlements += 1
-        self.stm_positions = np.append(self.stm_positions,
-                                              [[y], [x]], 1)
+        self.stm_positions.append((y, x))
         self.stm_influenced_cells.append([(y, x)])
         self.stm_cropped_cells.append([(y, x)])
 
@@ -1135,7 +1113,7 @@ class Core(Parameters):
         self.stm_es_pg.append(0)
         self.stm_migrants.append(0)
 
-    def run(self, t_max=1):
+    def run(self, t_max: int = 1):
         """
         Run the model for a given number of steps.
         If no number of steps is given, the model is integrated for one step
@@ -1153,11 +1131,11 @@ class Core(Parameters):
                          desc='running MayaSim',
                          postfix={'population': sum(self.stm_population)})
 
-        for t in t_range:
+        for timestep in t_range:
             # evolve subselfs
 
             # ecosystem
-            self.update_precipitation(t)
+            self.update_precipitation(timestep)
             # net primary productivity
             cel_npp = self.get_npp()
             self.evolve_forest(cel_npp)
@@ -1201,8 +1179,9 @@ class Core(Parameters):
             # update population counter on progress bar
             t_range.set_postfix({'population': sum(self.stm_population)})
 
-            self.step_output(t, cel_npp, cel_wf, cel_ag, cel_es, cel_bca, abandoned, sown, built,
-                             lost, new_settlements, killed_settlements)
+            self.step_output(
+                timestep, cel_npp, cel_wf, cel_ag, cel_es, cel_bca, abandoned,
+                sown, built, lost, new_settlements, killed_settlements)
 
 
     def init_output(self):
@@ -1230,14 +1209,18 @@ class Core(Parameters):
         if self.output_geographic_data:
             pass
 
-    def step_output(self, t, cel_npp, cel_wf, cel_ag, cel_es, cel_bca, abandoned, sown, built,
-                    lost, new_settlements, killed_settlements):
+    def step_output(
+            self, timestep: int,
+            cel_npp: NDArray, cel_wf: NDArray,
+            cel_ag: NDArray, cel_es: NDArray, cel_bca: NDArray,
+            abandoned: int, sown: int, built: int, lost: int,
+            new_settlements: int, killed_settlements: int):
         """
         call different data saving routines depending on settings.
 
         Parameters
         ----------
-        t: int
+        timestep: int
             Timestep number to append to save file path
         cel_npp: numpy array
             Net Primary Productivity on cell basis
@@ -1270,41 +1253,40 @@ class Core(Parameters):
 
         if self.calc_aggregates:
             self.update_aggregates(
-                t, [cel_npp, cel_wf, cel_ag, cel_es, cel_bca], built, lost,
+                timestep, [cel_npp, cel_wf, cel_ag, cel_es, cel_bca], built, lost,
                 new_settlements, killed_settlements
                 )
-            self.update_traders_aggregates(t)
+            self.update_traders_aggregates(timestep)
 
         # save maps of spatial data
 
         if self.output_geographic_data:
-            self.save_geographic_output(t, cel_wf, abandoned, sown)
+            self.save_geographic_output(timestep, cel_wf, abandoned, sown)
 
         # save data on settlement basis
 
         if self.output_settlement_data:
-            self.save_settlement_output(t)
+            self.save_settlement_output(timestep)
 
-    def save_settlement_output(self, t):
+    def save_settlement_output(self, timestep: int):
         """
         Organize settlement based data in Pandas Dataframe
         and save to file.
 
         Parameters
         ----------
-        t: int
+        timestep: int
             Timestep number to append to save file path
 
         """
         colums = [
             'population', 'real income', 'ag income', 'es income',
-            'trade income', 'y position', 'x position', 'out migration',
+            'trade income', 'position', 'out migration',
             'degree'
             ]
         data = [
             self.stm_population, self.stm_real_income_pc, self.stm_crop_yield,
-            self.stm_eco_benefit, self.stm_trade_income,
-            list(self.stm_positions[0]), list(self.stm_positions[1]),
+            self.stm_eco_benefit, self.stm_trade_income, self.stm_positions,
             self.stm_migrants, self.stm_degree
             ]
 
@@ -1312,17 +1294,18 @@ class Core(Parameters):
 
         data_frame = pandas.DataFrame(columns=colums, data=data)
 
-        with open(self.settlement_output_path(t), 'wb') as f:
+        with open(self.settlement_output_path(timestep), 'wb') as f:
             pkl.dump(data_frame, f)
 
-    def save_geographic_output(self, t, cel_wf, abandoned, sown):
+    def save_geographic_output(
+            self, timestep: int, cel_wf: NDArray, abandoned: int, sown: int):
         """
         Organize Geographic data in dictionary (for separate layers
         of data) and save to file.
 
         Parameters
         ----------
-        t: int
+        timestep: int
             Timestep number to append to save file path
         cel_wf: numpy array
             Water flow through cell
@@ -1345,14 +1328,13 @@ class Core(Parameters):
             'soil degradation': self.cel_soil_deg,
             'population gradient': self.cel_pop_gradient,
             'adjacency': self.stm_adjacency,
-            'y positions': list(self.stm_positions[0]),
-            'x positions': list(self.stm_positions[1]),
+            'position': self.stm_positions,
             'population': self.stm_population,
             'elev': self.cel_elev,
             'rank': self.stm_rank
             }
 
-        with open(self.geographic_output_path(t), 'wb') as f:
+        with open(self.geographic_output_path(timestep), 'wb') as f:
             pkl.dump(data, f)
 
     def init_aggregates(self):
@@ -1382,8 +1364,8 @@ class Core(Parameters):
             'es_income_pop_density'
             ])
 
-    def update_aggregates(self, time, args, built, lost,
-                                 new_settlements, killed_settlements):
+    def update_aggregates(self, time: int, args: list[NDArray], built: int, lost: int,
+                                 new_settlements: int, killed_settlements: int):
         # args = [cel_npp, cel_wf, cel_ag, cel_es, cel_bca]
 
         total_population = sum(self.stm_population)
@@ -1436,7 +1418,7 @@ class Core(Parameters):
             np.nanmax(self.cel_pop_gradient)
             ])
 
-    def update_traders_aggregates(self, time):
+    def update_traders_aggregates(self, time: int):
 
         traders = np.where(np.array(self.stm_degree) > 0)[0]
 
