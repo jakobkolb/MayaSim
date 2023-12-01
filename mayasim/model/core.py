@@ -7,6 +7,7 @@ from random import sample
 import pickle as pkl
 import networkx as nx
 import numpy as np
+from numpy.random import random_sample
 from numpy.typing import NDArray
 import pandas
 import pkg_resources
@@ -77,11 +78,11 @@ class Core(Parameters):
             self.output_path = output_path.rsplit('.', 1)[0]
             # create callable output paths
             self.settlement_output_path = \
-                lambda i: self.output_path + \
-                f'settlement_data_{i:03d}.pkl'
+                lambda timestep: self.output_path + \
+                f'settlement_data_{timestep:03d}.pkl'
             self.geographic_output_path = \
-                lambda i: self.output_path + \
-                f'geographic_data_{i:03d}.pkl'
+                lambda timestep: self.output_path + \
+                f'geographic_data_{timestep:03d}.pkl'
             # set switches for output generation
             self.output_geographic_data = True
             self.output_settlement_data = True
@@ -101,8 +102,8 @@ class Core(Parameters):
         # apparently temperature data is given in x*10 format to allow for
         # smaller file sizes.
         # original version of mayasim divides temperature by 12 though
-        self.cel_temp = np.load(input_data_path
-                                + '0_RES_432x400_temp.npy') / 12.
+        self.cel_temp = np.load(
+            input_data_path + '0_RES_432x400_temp.npy') / 12.
 
         # precipitation in mm or liters per square meter
         # (comparing the numbers to numbers from Wikipedia suggests
@@ -138,10 +139,10 @@ class Core(Parameters):
         # *********************************************************************
 
         # dimensions of the map
-        self.rows, self.columns = self.cel_precip_mean.shape
+        self.map_shape = self.cel_temp.shape
         self.height, self.width = 914., 840.  # height and width in km
-        self.width_cell = self.width / self.columns
-        self.height_cell = self.height / self.rows
+        self.height_cell = self.height / self.map_shape[0]
+        self.width_cell = self.width / self.map_shape[1]
 
         # find land cells
         self.cel_elev[:, 0] = np.inf
@@ -153,6 +154,7 @@ class Core(Parameters):
         self.n_land_cells = len(self.land_cells)
 
         # lengh unit - total map is about 500 km wide
+        # NOTE: this seems questionable, where does this value come from?
         self.area = 516484. / self.n_land_cells
 
         # initialize soil degradation and population
@@ -163,40 +165,34 @@ class Core(Parameters):
         # *********************************************************************
 
         # Soil (influencing primary production and agricultural productivity)
-        self.cel_soil_deg = np.zeros((self.rows, self.columns))
+        self.cel_soil_deg = np.zeros(self.map_shape)
 
         # Forest
-        self.cel_forest_state = np.ones((self.rows, self.columns), dtype=int)
+        self.cel_forest_state = np.ones(self.map_shape, dtype=int)
         self.cel_forest_state[np.isnan(self.cel_elev)] = 0
 
-        self.cel_forest_memory = np.zeros((self.rows, self.columns), dtype=int)
-        self.cel_cleared_neighs = np.zeros((self.rows, self.columns),
-                                           dtype=int)
-        # The forest has three states: 3=climax forest,
-        # 2=secondary regrowth, 1=cleared land.
-
-        for i in self.land_cells:
-            self.cel_forest_state[i] = 3
+        self.cel_forest_memory = np.zeros(self.map_shape, dtype=int)
+        self.cel_cleared_neighs = np.zeros(self.map_shape, dtype=int)
+        # forest states: 3=climax forest, 2=secondary regrowth, 1=cleared land
+        for cel in self.land_cells:
+            self.cel_forest_state[cel] = 3
 
         # Variables describing total amount of water and water flow
-        self.cel_water = np.zeros((self.rows, self.columns))
-        self.cel_flow = np.zeros((self.rows, self.columns))
-        self.cel_precip = np.zeros((self.rows, self.columns))
-
-        # initialize the trajectories of the water drops
-        self.x = np.zeros((self.rows, self.columns), dtype="int")
-        self.y = np.zeros((self.rows, self.columns), dtype="int")
+        self.cel_water = np.zeros(self.map_shape)
+        self.cel_flow = np.zeros(self.map_shape)
+        self.cel_precip = np.zeros(self.map_shape)
 
         # define relative coordinates of the neighbourhood of a cell
-        self.neighbourhood = [(i, j) for i in [-1, 0, 1] for j in [-1, 0, 1]]
-        self.f90neighbourhood = np.asarray(self.neighbourhood).T
+        # NOTE: why is this not happening within the f90 module?
+        neighbourhood = [(y,x) for y in [-1, 0, 1] for x in [-1, 0, 1]]
+        self.f90neighbourhood = np.asarray(neighbourhood).T
 
         # *********************************************************************
         # INITIALIZE SOCIETY
         # *********************************************************************
 
         # Population gradient (influencing the forest)
-        self.cel_pop_gradient = np.zeros((self.rows, self.columns))
+        self.cel_pop_gradient = np.zeros(self.map_shape)
 
         self.n_settlements = n
         # randomly distribute specified number of settlements on the map
@@ -206,7 +202,7 @@ class Core(Parameters):
 
         # demographic variables
         self.stm_birth_rate = [self.birth_rate_parameter] * n
-        self.stm_death_rate = [0.1 + 0.05 * r for r in list(np.random.random(n))]
+        self.stm_death_rate = [0.1 + 0.05 * r for r in list(random_sample(n))]
         self.stm_population = list(
             np.random.randint(self.min_init_inhabitants,
                               self.max_init_inhabitants,
@@ -222,12 +218,12 @@ class Core(Parameters):
         self.stm_influenced_cells = [None] * n # will be list of lists
 
         # agriculture/cropping
-        self.cel_is_cropped = np.zeros((self.rows, self.columns))
+        self.cel_is_cropped = np.zeros(self.map_shape)
         self.stm_cropped_cells_n = [0] * n
         self.stm_cropped_cells = [None] * n # will be list of lists
         # add settlement positions until get_cropped_cells() is first called
-        for stm, (y, x) in enumerate(self.stm_positions):
-            self.stm_cropped_cells[stm] = [(y, x)]
+        for stm, (y,x) in enumerate(self.stm_positions):
+            self.stm_cropped_cells[stm] = [(y,x)]
 
         self.stm_crop_yield = [0.] * n
         self.stm_eco_benefit = [0.] * n
@@ -238,11 +234,11 @@ class Core(Parameters):
         self.stm_es_fs = [0.] * n
         self.stm_es_sp = [0.] * n
         self.stm_es_pg = [0.] * n
-        self.cel_es_ag = np.zeros((self.rows, self.columns), dtype=float)
-        self.cel_es_wf = np.zeros((self.rows, self.columns), dtype=float)
-        self.cel_es_fs = np.zeros((self.rows, self.columns), dtype=float)
-        self.cel_es_sp = np.zeros((self.rows, self.columns), dtype=float)
-        self.cel_es_pg = np.zeros((self.rows, self.columns), dtype=float)
+        self.cel_es_ag = np.zeros(self.map_shape, dtype=float)
+        self.cel_es_wf = np.zeros(self.map_shape, dtype=float)
+        self.cel_es_fs = np.zeros(self.map_shape, dtype=float)
+        self.cel_es_sp = np.zeros(self.map_shape, dtype=float)
+        self.cel_es_pg = np.zeros(self.map_shape, dtype=float)
 
         # Trade Variables
         self.stm_adjacency = np.zeros((n, n))
@@ -329,7 +325,6 @@ class Core(Parameters):
         # to convert from mm to meters though...
         # but 1e-5 is what they do in the original version.
         rain_volume = np.nan_to_num(self.cel_precip * 1e-5)
-        max_x, max_y = self.rows, self.columns
         # pylint: disable-next=unused-variable
         err, self.cel_flow, self.cel_water = \
             f90routines.f90waterflow(
@@ -337,8 +332,8 @@ class Core(Parameters):
                 self.cel_elev,
                 rain_volume,
                 self.f90neighbourhood,
-                max_x,
-                max_y,
+                self.map_shape[0],
+                self.map_shape[1],
                 self.n_land_cells)
 
         return self.cel_water, self.cel_flow
@@ -357,55 +352,55 @@ class Core(Parameters):
         for _ in range(4):
 
             # vectorized random number generation for use in 'Degradation'
-            degradation_fortune = \
-                np.random.random(len(self.land_cells))
+            degradation_fortune = random_sample(self.n_land_cells)
             probdec = self.natprobdec * (2 * self.cel_pop_gradient + 1)
 
-            for n, i in enumerate(self.land_cells):
-                if not np.isnan(self.cel_elev[i]):
+            for cel, (y,x) in enumerate(self.land_cells):
+                if not np.isnan(self.cel_elev[y,x]):
 
                     # Degradation:
                     # Decrement with probability 0.003
                     # if there is a settlement around,
                     # degrade with higher probability
 
-                    if degradation_fortune[n] <= probdec[i]:
-                        if self.cel_forest_state[i] == 3:
-                            self.cel_forest_state[i] = 2
-                            self.cel_forest_memory[i] = self.state_change_s2
-                        elif self.cel_forest_state[i] == 2:
-                            self.cel_forest_state[i] = 1
-                            self.cel_forest_memory[i] = 0
+                    if degradation_fortune[cel] <= probdec[y,x]:
+                        if self.cel_forest_state[y,x] == 3:
+                            self.cel_forest_state[y,x] = 2
+                            self.cel_forest_memory[y,x] = self.state_change_s2
+                        elif self.cel_forest_state[y,x] == 2:
+                            self.cel_forest_state[y,x] = 1
+                            self.cel_forest_memory[y,x] = 0
 
                     # Regeneration
                     # recover if tree = 1 and memory > threshold 1
-                    if (self.cel_forest_state[i] == 1 and self.cel_forest_memory[i] >
-                            self.state_change_s2 * threshold[i]):
-                        self.cel_forest_state[i] = 2
-                        self.cel_forest_memory[i] = self.state_change_s2
+                    if (self.cel_forest_state[y,x] == 1
+                        and (self.cel_forest_memory[y,x]
+                             > self.state_change_s2 * threshold[y,x])):
+                        self.cel_forest_state[y,x] = 2
+                        self.cel_forest_memory[y,x] = self.state_change_s2
                     # recover if tree = 2 and memory > threshold 2
                     # and certain number of neighbours are
                     # climax forest as well
-                    if (self.cel_forest_state[i] == 2
-                        and self.cel_forest_memory[i]
-                        > self.state_change_s3 * threshold[i]):
+                    if (self.cel_forest_state[y,x] == 2
+                        and self.cel_forest_memory[y,x]
+                        > self.state_change_s3 * threshold[y,x]):
                         state_3_neighbours = \
                             np.sum(self.cel_forest_state[
-                                i[0] - 1:i[0] + 2,
-                                i[1] - 1:i[1] + 2] == 3)
+                                y - 1:y + 2,
+                                x - 1:x + 2] == 3)
                         if state_3_neighbours > self.min_s3_neighbours:
-                            self.cel_forest_state[i] = 3
+                            self.cel_forest_state[y,x] = 3
 
                     # finally, increase memory by one
-                    self.cel_forest_memory[i] += 1
+                    self.cel_forest_memory[y,x] += 1
 
         # calculate cleared land neighbours for output:
         if self.veg_rainfall > 0:
-            for i in self.land_cells:
-                self.cel_cleared_neighs[i] = \
+            for (y,x) in self.land_cells:
+                self.cel_cleared_neighs[y,x] = \
                     np.sum(self.cel_forest_state[
-                        i[0] - 1:i[0] + 2,
-                        i[1] - 1:i[1] + 2] == 1)
+                        y - 1:y + 2,
+                        x - 1:x + 2] == 1)
 
         # make sure all land cell have forest states 1-3
         assert not np.any(self.cel_forest_state[~np.isnan(self.cel_elev)]
@@ -504,9 +499,9 @@ class Core(Parameters):
         # EQUATION ############################################################
 
         # get cells within influence radius
-        for stm, (y, x) in enumerate(self.stm_positions):
+        for stm, (y,x) in enumerate(self.stm_positions):
             # create ogrid centered around settlement
-            Y, X = np.ogrid[-y:self.rows-y, -x:self.columns-x]
+            Y, X = np.ogrid[-y:self.map_shape[0]-y, -x:self.map_shape[1]-x]
             # mask cells within influence radius, assuming square cells
             influence_mask = X*X + Y*Y <= \
                 self.stm_influence_rad[stm]**2/self.area
@@ -558,7 +553,7 @@ class Core(Parameters):
         # calculate utility first! This can be accelerated, if calculations
         # are only done in 40 km radius.
 
-        for stm, (y, x) in enumerate(self.stm_positions):
+        for stm, (y,x) in enumerate(self.stm_positions):
 
             # get arrays for vectorized utility calculation
             infd_index = np.array(self.stm_influenced_cells[stm]).T
@@ -656,10 +651,10 @@ class Core(Parameters):
                 # find cells that have negative utility and belong
                 # to stm under consideration,
                 useless_cropped_cells = [
-                    occupied_cells[i] for i in range(len(occupied_cells))
+                    occupied_cells[cel] for cel in range(len(occupied_cells))
 
-                    if occupied_util[i] < 0
-                    and occupied_cells[i] in self.stm_cropped_cells[stm]
+                    if occupied_util[cel] < 0
+                    and occupied_cells[cel] in self.stm_cropped_cells[stm]
                     ]
 
                 # and release them.
@@ -688,9 +683,8 @@ class Core(Parameters):
         death_rate_diff = self.max_death_rate - self.min_death_rate
 
         self.stm_death_rate = [
-            -death_rate_diff * self.stm_real_income_pc[i] + self.max_death_rate
-
-            for i in range(len(self.stm_real_income_pc))
+            -death_rate_diff * income + self.max_death_rate
+            for income in self.stm_real_income_pc
             ]
 
         self.stm_death_rate = list(np.clip(
@@ -703,21 +697,23 @@ class Core(Parameters):
             birth_rate_diff = self.max_birth_rate - self.min_birth_rate
 
             self.stm_birth_rate = [
-                -birth_rate_diff / 10000. * value +
-                self.shift if value > 5000 else self.birth_rate_parameter
+                -birth_rate_diff / 10000. * pop +
+                self.shift if pop > 5000 else self.birth_rate_parameter
 
-                for value in self.stm_population
+                for pop in self.stm_population
                 ]
 
         # population grows according to effective growth rate
         self.stm_population = [
-            int((1. + self.stm_birth_rate[i] - self.stm_death_rate[i]) * value)
+            int((1. + b_rate - d_rate) * pop)
 
-            for i, value in enumerate(self.stm_population)
+            for b_rate, d_rate, pop in zip(
+                self.stm_birth_rate, self.stm_death_rate, self.stm_population,
+                strict = True)
             ]
 
         self.stm_population = [
-            value if value > 0 else 0 for value in self.stm_population
+            pop if pop > 0 else 0 for pop in self.stm_population
             ]
 
         mig_rate_diffe = self.max_mig_rate - self.min_mig_rate
@@ -725,30 +721,32 @@ class Core(Parameters):
         # outmigration rate also correlates
         # inversely with real income per capita
         self.stm_mig_rate = [
-            -mig_rate_diffe * self.stm_real_income_pc[i] + self.max_mig_rate
-
-            for i in range(len(self.stm_real_income_pc))
+            -mig_rate_diffe * income + self.max_mig_rate
+            for income in self.stm_real_income_pc
             ]
+
         self.stm_mig_rate = list(
             np.clip(self.stm_mig_rate, self.min_mig_rate, self.max_mig_rate))
-        self.stm_out_mig = [
-            int(self.stm_mig_rate[i] * self.stm_population[i])
 
-            for i in range(len(self.stm_population))
+        self.stm_out_mig = [
+            int(m_rate * pop)
+            for m_rate, pop in zip(
+                self.stm_mig_rate, self.stm_population, strict=True)
             ]
+
         self.stm_out_mig = [
             value if value > 0 else 0 for value in self.stm_out_mig]
 
     # impact of sociosphere on ecosphere
     def update_pop_gradient(self):
         # pop gradient quantifies the disturbance of the forest by population
-        self.cel_pop_gradient = np.zeros((self.rows, self.columns))
+        self.cel_pop_gradient = np.zeros(self.map_shape)
 
-        for stm, (y, x) in enumerate(self.stm_positions):
+        for stm, (y,x) in enumerate(self.stm_positions):
+
             infd_index = np.array(self.stm_influenced_cells[stm]).T
             distance = np.sqrt(self.area * (
-                (y - infd_index[0])**2
-                + (x - infd_index[1])**2))
+                (y - infd_index[0])**2 + (x - infd_index[1])**2))
 
             # EQUATION ########################################################
             self.cel_pop_gradient[infd_index[0], infd_index[1]] += \
@@ -767,14 +765,14 @@ class Core(Parameters):
     def get_rank(self):
         # depending on population ranks are assigned
         # attention: ranks are reverted with respect to Netlogo MayaSim !
-        # 1 => 3 ; 2 => 2 ; 3 => 1
+        # 1 -> 3 ; 2 -> 2 ; 3 -> 1
         self.stm_rank = [
-            3
+            3 if pop > self.thresh_rank_3
+            else 2 if pop > self.thresh_rank_2
+            else 1 if pop > self.thresh_rank_1
+            else 0
 
-            if value > self.thresh_rank_3 else 2 if value > self.thresh_rank_2
-            else 1 if value > self.thresh_rank_1 else 0
-
-            for index, value in enumerate(self.stm_population)
+            for pop in self.stm_population
             ]
 
 
@@ -791,7 +789,7 @@ class Core(Parameters):
         # create index-array of stm positions to vectorize distance calculation
         positions = np.array(self.stm_positions).T
 
-        for stm, (y, x) in enumerate(self.stm_positions):
+        for stm, (y,x) in enumerate(self.stm_positions):
             # stm with rank > 0 are traders and establish links to neighbours
             # NOTE: only if they do not already have 'rank' trading partners?
             if self.stm_degree[stm] < self.stm_rank[stm]:
@@ -907,7 +905,7 @@ class Core(Parameters):
             else self.stm_crop_yield[index]
 
             for index in range(len(self.stm_crop_yield))
-            ]
+        ]
 
     def get_eco_income(self, cel_es: NDArray):
         # benefit from ecosystem services of cells in influence
@@ -935,18 +933,19 @@ class Core(Parameters):
     def get_trade_income(self):
         # ##EQUATION###########################################################
         self.stm_trade_income = [
-            1. / 30.
-            * (1 + self.stm_comp_size[i] / self.stm_centrality[i])**0.9
+            1. / 30. * (1 + comp_size / centrality)**0.9
 
-            for i in range(len(self.stm_centrality))
+            for comp_size, centrality in zip(
+                self.stm_comp_size, self.stm_centrality, strict=True)
             ]
-        self.stm_trade_income = [
-            self.r_trade
-            if value > 1 else 0
-            if (value < 0 or self.stm_degree[index] == 0)
-            else self.r_trade * value
 
-            for index, value in enumerate(self.stm_trade_income)
+        self.stm_trade_income = [
+            self.r_trade if trade_income > 1
+            else 0 if (trade_income < 0 or degree == 0)
+            else self.r_trade * trade_income
+
+            for trade_income, degree in zip(
+                self.stm_trade_income, self.stm_degree, strict=True)
             ]
         # ##EQUATION###########################################################
 
@@ -954,12 +953,14 @@ class Core(Parameters):
         # combine agricultural, ecosystem service and trade benefit
         # EQUATION #
         self.stm_real_income_pc = [
-            (self.stm_crop_yield[index] + self.stm_eco_benefit[index] +
-             self.stm_trade_income[index]) /
-            self.stm_population[index] if value > 0 else 0
+            (crop_yield + eco_benefit + trade_income) / pop
+            if pop > 0 else 0
 
-            for index, value in enumerate(self.stm_population)
-        ]
+            for crop_yield, eco_benefit, trade_income, pop in zip(
+                self.stm_crop_yield, self.stm_eco_benefit,
+                self.stm_trade_income, self.stm_population,
+                strict=True)
+            ]
 
     def migration(self, cel_es):
         # if outmigration rate exceeds threshold, found new settlement
@@ -975,7 +976,7 @@ class Core(Parameters):
         # create index-array of stm positions to vectorize distance calculation
         positions = np.array(self.stm_positions).T
 
-        for stm, (y, x) in enumerate(self.stm_positions):
+        for stm, (y,x) in enumerate(self.stm_positions):
 
             if (self.stm_out_mig[stm] > 400 and len(uninfd_index[0]) > 0
                     and np.random.rand() <= 0.5):
@@ -1083,9 +1084,9 @@ class Core(Parameters):
 
         # extend all variables to include new stm
         self.n_settlements += 1
-        self.stm_positions.append((y, x))
-        self.stm_influenced_cells.append([(y, x)])
-        self.stm_cropped_cells.append([(y, x)])
+        self.stm_positions.append((y,x))
+        self.stm_influenced_cells.append([(y,x)])
+        self.stm_cropped_cells.append([(y,x)])
 
         n = len(self.stm_adjacency)
         self.stm_adjacency = np.append(self.stm_adjacency, [[0] * n], 0)
@@ -1202,7 +1203,7 @@ class Core(Parameters):
                 self.output_path += '/'
 
         if self.output_settlement_data:
-            settlement_init_data = {'shape': (self.rows, self.columns)}
+            settlement_init_data = {'shape': self.map_shape}
             with open(self.settlement_output_path(0), 'wb') as f:
                 pkl.dump(settlement_init_data, f)
 
@@ -1422,31 +1423,32 @@ class Core(Parameters):
 
         traders = np.where(np.array(self.stm_degree) > 0)[0]
 
-        total_population = sum(self.stm_population[c] for c in traders)
-        total_migrants = sum(self.stm_migrants[c] for c in traders)
+        total_population = sum(self.stm_population[stm] for stm in traders)
+        total_migrants = sum(self.stm_migrants[stm] for stm in traders)
         total_settlements = len(self.stm_population)
         total_traders = len(traders)
         total_trade_links = sum(self.stm_degree) / 2
-        income_agriculture = sum(self.stm_crop_yield[c] for c in traders)
-        income_ecosystem = sum(self.stm_eco_benefit[c] for c in traders)
-        income_trade = sum(self.stm_trade_income[c] for c in traders)
-        income_es_fs = sum(self.stm_es_fs[c] for c in traders)
-        income_es_wf = sum(self.stm_es_wf[c] for c in traders)
-        income_es_ag = sum(self.stm_es_ag[c] for c in traders)
-        income_es_sp = sum(self.stm_es_sp[c] for c in traders)
-        income_es_pg = sum(self.stm_es_pg[c] for c in traders)
+        income_agriculture = sum(self.stm_crop_yield[stm] for stm in traders)
+        income_ecosystem = sum(self.stm_eco_benefit[stm] for stm in traders)
+        income_trade = sum(self.stm_trade_income[stm] for stm in traders)
+        income_es_fs = sum(self.stm_es_fs[stm] for stm in traders)
+        income_es_wf = sum(self.stm_es_wf[stm] for stm in traders)
+        income_es_ag = sum(self.stm_es_ag[stm] for stm in traders)
+        income_es_sp = sum(self.stm_es_sp[stm] for stm in traders)
+        income_es_pg = sum(self.stm_es_pg[stm] for stm in traders)
 
         total_cropped_cells = \
-            sum(self.stm_cropped_cells_n[c] for c in traders)
+            sum(self.stm_cropped_cells_n[stm] for stm in traders)
         total_influenced_cells = \
-            sum(self.stm_influenced_cells_n[c] for c in traders)
+            sum(self.stm_influenced_cells_n[stm] for stm in traders)
 
         self.traders_aggregates.append([
             time, total_population, total_migrants, total_traders,
             total_settlements, total_cropped_cells,
             total_influenced_cells, total_trade_links, income_agriculture,
-            income_ecosystem, income_trade, income_es_fs, income_es_wf,
-            income_es_ag, income_es_sp, income_es_pg
+            income_ecosystem, income_trade
+            , income_es_fs, income_es_wf, income_es_ag,
+            income_es_sp, income_es_pg
             ])
 
     def get_aggregates(self):
