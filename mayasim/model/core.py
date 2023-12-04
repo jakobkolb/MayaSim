@@ -108,7 +108,8 @@ class Core(Parameters):
         # precipitation in mm or liters per square meter
         # (comparing the numbers to numbers from Wikipedia suggests
         # that it is given per year)
-        self.cel_precip_mean = np.load(input_data_path + '0_RES_432x400_precip.npy')
+        self.cel_precip_mean = np.load(
+            input_data_path + '0_RES_432x400_precip.npy')
 
         # in meters above sea level
         self.cel_elev = np.load(input_data_path + '0_RES_432x400_elev.npy')
@@ -145,13 +146,17 @@ class Core(Parameters):
         self.width_cell = self.width / self.map_shape[1]
 
         # find land cells
+        self.land_cell_index = np.asarray(np.where(~np.isnan(self.cel_elev)))
+        self.land_cells = list(zip(*self.land_cell_index))
+        self.n_land_cells = len(self.land_cells)
+        # exclude edge cells for forest succession
         self.cel_elev[:, 0] = np.inf
         self.cel_elev[:, -1] = np.inf
         self.cel_elev[0, :] = np.inf
         self.cel_elev[-1, :] = np.inf
-        self.land_cell_index = np.asarray(np.where(np.isfinite(self.cel_elev)))
-        self.land_cells = list(zip(*self.land_cell_index))
-        self.n_land_cells = len(self.land_cells)
+        self.forest_cell_index = \
+            np.asarray(np.where(np.isfinite(self.cel_elev)))
+        self.n_forest_cells = self.forest_cell_index.shape[1]
 
         # lengh unit - total map is about 500 km wide
         # NOTE: this seems questionable, where does this value come from?
@@ -168,14 +173,15 @@ class Core(Parameters):
         self.cel_soil_deg = np.zeros(self.map_shape)
 
         # Forest
+        # forest states: 3=climax forest, 2=secondary regrowth, 1=cleared land
         self.cel_forest_state = np.ones(self.map_shape, dtype=int)
-        self.cel_forest_state[np.isnan(self.cel_elev)] = 0
+        # set all non-land cells to 0 (no forest)
+        self.cel_forest_state[~self.land_cell_index] = 0
 
         self.cel_forest_memory = np.zeros(self.map_shape, dtype=int)
         self.cel_cleared_neighs = np.zeros(self.map_shape, dtype=int)
-        # forest states: 3=climax forest, 2=secondary regrowth, 1=cleared land
-        for cel in self.land_cells:
-            self.cel_forest_state[cel] = 3
+        # set all forest cells (land-cells excluding edges) to 'climax forest'
+        self.cel_forest_state[self.forest_cell_index] = 3
 
         # Variables describing total amount of water and water flow
         self.cel_water = np.zeros(self.map_shape)
@@ -347,58 +353,55 @@ class Core(Parameters):
         for _ in range(4):
 
             # vectorized random number generation for use in 'Degradation'
-            degradation_fortune = random_sample(self.n_land_cells)
+            degradation_fortune = random_sample(self.n_forest_cells)
             probdec = self.natprobdec * (2 * self.cel_pop_gradient + 1)
 
-            for cel, (y,x) in enumerate(self.land_cells):
-                if not np.isnan(self.cel_elev[y,x]):
-
-                    # Degradation:
-                    # Decrement with probability 0.003
-                    # if there is a settlement around,
-                    # degrade with higher probability
-
-                    if degradation_fortune[cel] <= probdec[y,x]:
-                        if self.cel_forest_state[y,x] == 3:
-                            self.cel_forest_state[y,x] = 2
-                            self.cel_forest_memory[y,x] = self.state_change_s2
-                        elif self.cel_forest_state[y,x] == 2:
-                            self.cel_forest_state[y,x] = 1
-                            self.cel_forest_memory[y,x] = 0
-
-                    # Regeneration
-                    # recover if tree = 1 and memory > threshold 1
-                    if (self.cel_forest_state[y,x] == 1
-                        and (self.cel_forest_memory[y,x]
-                             > self.state_change_s2 * threshold[y,x])):
+            for cel, (y,x) in enumerate(zip(*self.forest_cell_index)):
+                # Degradation:
+                # Decrement with probability 0.003
+                # if there is a settlement around,
+                # degrade with higher probability
+                if degradation_fortune[cel] <= probdec[y,x]:
+                    if self.cel_forest_state[y,x] == 3:
                         self.cel_forest_state[y,x] = 2
                         self.cel_forest_memory[y,x] = self.state_change_s2
-                    # recover if tree = 2 and memory > threshold 2
-                    # and certain number of neighbours are
-                    # climax forest as well
-                    if (self.cel_forest_state[y,x] == 2
-                        and self.cel_forest_memory[y,x]
-                        > self.state_change_s3 * threshold[y,x]):
-                        state_3_neighbours = \
-                            np.sum(self.cel_forest_state[
-                                y - 1:y + 2,
-                                x - 1:x + 2] == 3)
-                        if state_3_neighbours > self.min_s3_neighbours:
-                            self.cel_forest_state[y,x] = 3
+                    elif self.cel_forest_state[y,x] == 2:
+                        self.cel_forest_state[y,x] = 1
+                        self.cel_forest_memory[y,x] = 0
 
-                    # finally, increase memory by one
-                    self.cel_forest_memory[y,x] += 1
+                # Regeneration
+                # recover if tree = 1 and memory > threshold 1
+                if (self.cel_forest_state[y,x] == 1
+                    and (self.cel_forest_memory[y,x]
+                            > self.state_change_s2 * threshold[y,x])):
+                    self.cel_forest_state[y,x] = 2
+                    self.cel_forest_memory[y,x] = self.state_change_s2
+                # recover if tree = 2 and memory > threshold 2
+                # and certain number of neighbours are
+                # climax forest as well
+                if (self.cel_forest_state[y,x] == 2
+                    and self.cel_forest_memory[y,x]
+                    > self.state_change_s3 * threshold[y,x]):
+                    state_3_neighbours = \
+                        np.sum(self.cel_forest_state[
+                            y - 1:y + 2,
+                            x - 1:x + 2] == 3)
+                    if state_3_neighbours > self.min_s3_neighbours:
+                        self.cel_forest_state[y,x] = 3
+
+                # finally, increase memory by one
+                self.cel_forest_memory[y,x] += 1
 
         # calculate cleared land neighbours for output:
         if self.veg_rainfall > 0:
-            for (y,x) in self.land_cells:
+            for (y,x) in zip(*self.forest_cell_index):
                 self.cel_cleared_neighs[y,x] = \
                     np.sum(self.cel_forest_state[
                         y - 1:y + 2,
                         x - 1:x + 2] == 1)
 
-        # make sure all land cell have forest states 1-3
-        assert not np.any(self.cel_forest_state[~np.isnan(self.cel_elev)]
+        # make sure all forest cells have forest states 1-3
+        assert not np.any(self.cel_forest_state[self.forest_cell_index]
                           < 1), 'forest state is smaller than 1 somewhere'
 
     def get_npp(self):
@@ -418,11 +421,9 @@ class Core(Parameters):
 
     def get_ag(self, cel_npp: NDArray, cel_wf: NDArray):
         """
-        agricultural productivity is calculated via a
-        linear additive model from
-        net primary productivity, soil productivity,
-        slope, waterflow and soil degradation
-        of each patch.
+        agricultural productivity is calculated via a linear additive
+        model from net primary productivity, soil productivity, slope,
+        waterflow and soil degradation of each patch.
         """
         # EQUATION ############################################################
         return (self.a_npp * cel_npp
@@ -437,10 +438,11 @@ class Core(Parameters):
         Ecosystem Services are calculated via a linear
         additive model from agricultural productivity (cel_ag),
         waterflow through the cell (cel_wf) and forest
-        state on the cell (forest) in [1,3],
+        state on the cell (cel_forest_state) in [1,3],
         The recent version of mayasim limits value of
-        ecosystem services to 1 < ecoserv < 250, it also proposes
-        to include population density (cel_pop_gradient) and precipitation (rain)
+        ecosystem services to 1 < ecoserv < 250, it also
+        proposes to include population density
+        (cel_pop_gradient) and precipitation (cel_precip)
         """
         # EQUATION ############################################################
 
@@ -456,7 +458,8 @@ class Core(Parameters):
             # before
             self.cel_es_ag = np.zeros(np.shape(cel_ag))
             self.cel_es_wf = self.e_wf * cel_wf
-            self.cel_es_fs = 2. * self.e_ag * (self.cel_forest_state - 1.) * cel_ag
+            self.cel_es_fs = 2. * self.e_ag \
+                * (self.cel_forest_state - 1.) * cel_ag
             self.cel_es_sp = self.e_r * self.cel_precip
             self.cel_es_pg = self.e_deg * self.cel_pop_gradient
 
@@ -1234,8 +1237,8 @@ class Core(Parameters):
 
         if self.calc_aggregates:
             self.update_aggregates(
-                timestep, [cel_npp, cel_wf, cel_ag, cel_es, cel_bca], built, lost,
-                new_settlements, killed_settlements
+                timestep, [cel_npp, cel_wf, cel_ag, cel_es, cel_bca],
+                built, lost, new_settlements, killed_settlements
                 )
             self.update_traders_aggregates(timestep)
 
@@ -1341,8 +1344,9 @@ class Core(Parameters):
             'total_income_trade'
             ])
 
-    def update_aggregates(self, time: int, args: list[NDArray], built: int, lost: int,
-                                 new_settlements: int, killed_settlements: int):
+    def update_aggregates(
+            self, time: int, args: list[NDArray], built: int, lost: int,
+            new_settlements: int, killed_settlements: int):
         # args = [cel_npp, cel_wf, cel_ag, cel_es, cel_bca]
 
         total_population = sum(self.stm_population)
