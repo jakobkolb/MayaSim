@@ -228,12 +228,7 @@ class Core(Parameters):
         self.stm_crop_yield = [0.] * n
         self.stm_eco_benefit = [0.] * n
 
-        # details of income from ecosystems services
-        self.stm_es_ag = [0.] * n
-        self.stm_es_wf = [0.] * n
-        self.stm_es_fs = [0.] * n
-        self.stm_es_sp = [0.] * n
-        self.stm_es_pg = [0.] * n
+        # components of ecosystem service income
         self.cel_es_ag = np.zeros(self.map_shape, dtype=float)
         self.cel_es_wf = np.zeros(self.map_shape, dtype=float)
         self.cel_es_fs = np.zeros(self.map_shape, dtype=float)
@@ -921,11 +916,6 @@ class Core(Parameters):
                 r = self.r_es_sum
                 infd_index = np.array(infd_cells).T
                 self.stm_eco_benefit[stm] = r * np.nansum(cel_es[infd_index])
-                self.stm_es_ag[stm] = r * np.nansum(self.cel_es_ag[infd_index])
-                self.stm_es_wf[stm] = r * np.nansum(self.cel_es_wf[infd_index])
-                self.stm_es_fs[stm] = r * np.nansum(self.cel_es_fs[infd_index])
-                self.stm_es_sp[stm] = r * np.nansum(self.cel_es_sp[infd_index])
-                self.stm_es_pg[stm] = r * np.nansum(self.cel_es_pg[infd_index])
 
         self.stm_eco_benefit[self.stm_population == 0] = 0
         # ##EQUATION###########################################################
@@ -1051,11 +1041,6 @@ class Core(Parameters):
             del self.stm_real_income_pc[index]
             del self.stm_influenced_cells[index]
             del self.stm_cropped_cells[index]
-            del self.stm_es_ag[index]
-            del self.stm_es_wf[index]
-            del self.stm_es_fs[index]
-            del self.stm_es_sp[index]
-            del self.stm_es_pg[index]
             del self.stm_migrants[index]
 
             killed_stm += 1
@@ -1107,11 +1092,6 @@ class Core(Parameters):
         self.stm_degree.append(0)
         self.stm_trade_income.append(0)
         self.stm_real_income_pc.append(0)
-        self.stm_es_ag.append(0)
-        self.stm_es_wf.append(0)
-        self.stm_es_fs.append(0)
-        self.stm_es_sp.append(0)
-        self.stm_es_pg.append(0)
         self.stm_migrants.append(0)
 
     def run(self, t_max: int = 1):
@@ -1348,9 +1328,7 @@ class Core(Parameters):
             'total_income_agriculture', 'total_income_ecosystem',
             'total_income_trade', 'mean_soil_degradation',
             'forest_state_3_cells', 'forest_state_2_cells',
-            'forest_state_1_cells', 'es_income_forest', 'es_income_waterflow',
-            'es_income_agricultural_productivity', 'es_income_precipitation',
-            'es_income_pop_density', 'MAP', 'max_npp', 'mean_waterflow',
+            'forest_state_1_cells', 'MAP', 'max_npp', 'mean_waterflow',
             'max_AG', 'max_ES', 'max_bca', 'max_soil_deg', 'max_pop_grad'
             ])
 
@@ -1360,9 +1338,7 @@ class Core(Parameters):
             'total_settlements', 'total_cropped_cells',
             'total_influenced_cells', 'total_trade_links',
             'total_income_agriculture', 'total_income_ecosystem',
-            'total_income_trade', 'es_income_forest', 'es_income_waterflow',
-            'es_income_agricultural_productivity', 'es_income_precipitation',
-            'es_income_pop_density'
+            'total_income_trade'
             ])
 
     def update_aggregates(self, time: int, args: list[NDArray], built: int, lost: int,
@@ -1404,11 +1380,6 @@ class Core(Parameters):
             np.sum(self.cel_forest_state == 3),
             np.sum(self.cel_forest_state == 2),
             np.sum(self.cel_forest_state == 1),
-            np.sum(self.stm_es_fs),
-            np.sum(self.stm_es_wf),
-            np.sum(self.stm_es_ag),
-            np.sum(self.stm_es_sp),
-            np.sum(self.stm_es_pg),
             np.nanmean(self.cel_precip),
             np.nanmax(args[0]),
             np.nanmean(args[1]),
@@ -1431,11 +1402,6 @@ class Core(Parameters):
         income_agriculture = sum(self.stm_crop_yield[stm] for stm in traders)
         income_ecosystem = sum(self.stm_eco_benefit[stm] for stm in traders)
         income_trade = sum(self.stm_trade_income[stm] for stm in traders)
-        income_es_fs = sum(self.stm_es_fs[stm] for stm in traders)
-        income_es_wf = sum(self.stm_es_wf[stm] for stm in traders)
-        income_es_ag = sum(self.stm_es_ag[stm] for stm in traders)
-        income_es_sp = sum(self.stm_es_sp[stm] for stm in traders)
-        income_es_pg = sum(self.stm_es_pg[stm] for stm in traders)
 
         total_cropped_cells = \
             sum(self.stm_cropped_cells_n[stm] for stm in traders)
@@ -1447,8 +1413,6 @@ class Core(Parameters):
             total_settlements, total_cropped_cells,
             total_influenced_cells, total_trade_links, income_agriculture,
             income_ecosystem, income_trade
-            , income_es_fs, income_es_wf, income_es_ag,
-            income_es_sp, income_es_pg
             ])
 
     def get_aggregates(self):
