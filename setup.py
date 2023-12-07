@@ -20,8 +20,8 @@ setup(
     packages=['mayasim'],
     include_package_data=True,
     install_requires=[
-        'numpy>=1.18.0',
-        'pandas>=0.22.0',
+        'numpy>=1.26.0',
+        'pandas>=2.0.0',
         'pymofa @ git+https://github.com/fkuehlein/pymofa@results_pkl',
         'networkx',
         'pickleshare',
@@ -35,6 +35,9 @@ setup(
             'pytest-cov',
             'pylama',
             'pylint'
+        ],
+        'eval': [
+            'jupyter'
         ]
     },
     # see http://stackoverflow.com/questions/15869473/what-is-the-advantage-
