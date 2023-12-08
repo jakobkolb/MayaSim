@@ -7,7 +7,7 @@ from random import sample
 import pickle as pkl
 import networkx as nx
 import numpy as np
-from numpy.random import random_sample
+from numpy.random import rand
 from numpy.typing import NDArray
 import pandas
 import pkg_resources
@@ -149,14 +149,6 @@ class Core(Parameters):
         self.land_cell_index = np.asarray(np.where(~np.isnan(self.cel_elev)))
         self.land_cells = list(zip(*self.land_cell_index))
         self.n_land_cells = len(self.land_cells)
-        # exclude edge cells for forest succession
-        self.cel_elev[:, 0] = np.inf
-        self.cel_elev[:, -1] = np.inf
-        self.cel_elev[0, :] = np.inf
-        self.cel_elev[-1, :] = np.inf
-        self.forest_cell_index = \
-            np.asarray(np.where(np.isfinite(self.cel_elev)))
-        self.n_forest_cells = self.forest_cell_index.shape[1]
 
         # lengh unit - total map is about 500 km wide
         # NOTE: this seems questionable, where does this value come from?
@@ -173,15 +165,12 @@ class Core(Parameters):
         self.cel_soil_deg = np.zeros(self.map_shape)
 
         # Forest
-        # forest states: 3=climax forest, 2=secondary regrowth, 1=cleared land
-        self.cel_forest_state = np.ones(self.map_shape, dtype=int)
-        # set all non-land cells to 0 (no forest)
-        self.cel_forest_state[~self.land_cell_index] = 0
-
+        self.cel_forest_state = np.zeros(self.map_shape, dtype=int)
         self.cel_forest_memory = np.zeros(self.map_shape, dtype=int)
         self.cel_cleared_neighs = np.zeros(self.map_shape, dtype=int)
-        # set all forest cells (land-cells excluding edges) to 'climax forest'
-        self.cel_forest_state[self.forest_cell_index] = 3
+        # forest states: 3=climax forest, 2=secondary regrowth, 1=cleared land
+        # set all land cells to 'climax forest'
+        self.cel_forest_state[*self.land_cell_index] = 3
 
         # Variables describing total amount of water and water flow
         self.cel_water = np.zeros(self.map_shape)
@@ -208,7 +197,7 @@ class Core(Parameters):
 
         # demographic variables
         self.stm_birth_rate = [self.birth_rate_parameter] * n
-        self.stm_death_rate = [0.1 + 0.05 * r for r in list(random_sample(n))]
+        self.stm_death_rate = [0.1 + 0.05 * r for r in list(rand(n))]
         self.stm_population = list(
             np.random.randint(self.min_init_inhabitants,
                               self.max_init_inhabitants,
@@ -345,63 +334,61 @@ class Core(Parameters):
         """
 
         # Forest regenerates faster [slower] (linearly),
-        # if net primary productivity on the patch
-        # is above [below] average.
-        threshold = np.nanmean(cel_npp) / cel_npp
+        # if cell net primary productivity is above [below] average.
+        cel_npp_relative = np.nanmean(cel_npp) / cel_npp
+
+        # neighbor kernel
+        neigh_kernel = np.array([[1, 1, 1],[1, 0, 1],[1, 1, 1]])
 
         # Iterate over all cells repeatedly and regenerate or degenerate
         for _ in range(4):
 
-            # vectorized random number generation for use in 'Degradation'
-            degradation_fortune = random_sample(self.n_forest_cells)
-            probdec = self.natprobdec * (2 * self.cel_pop_gradient + 1)
+            # Degeneration
 
-            for cel, (y,x) in enumerate(zip(*self.forest_cell_index)):
-                # Degradation:
-                # Decrement with probability 0.003
-                # if there is a settlement around,
-                # degrade with higher probability
-                if degradation_fortune[cel] <= probdec[y,x]:
-                    if self.cel_forest_state[y,x] == 3:
-                        self.cel_forest_state[y,x] = 2
-                        self.cel_forest_memory[y,x] = self.state_change_s2
-                    elif self.cel_forest_state[y,x] == 2:
-                        self.cel_forest_state[y,x] = 1
-                        self.cel_forest_memory[y,x] = 0
+            # Probability is increased if there are settlements around.
+            cel_deg_prob = self.natprobdec * (1 + 2 * self.cel_pop_gradient)
+            cel_deg_fortune = cel_deg_prob >= rand(*self.map_shape)
+            # Mask state 3 candidates and degenerate
+            cel_deg_s3 = cel_deg_fortune & (self.cel_forest_state == 3)
+            self.cel_forest_state[cel_deg_s3] = 2
+            self.cel_forest_memory[cel_deg_s3] = self.state_change_s2
+            # Mask state 2 candidates and degenerate
+            cel_deg_s2 = cel_deg_fortune & (self.cel_forest_state == 2)
+            self.cel_forest_state[cel_deg_s2] = 1
+            self.cel_forest_memory[cel_deg_s2] = 0
 
-                # Regeneration
-                # recover if tree = 1 and memory > threshold 1
-                if (self.cel_forest_state[y,x] == 1
-                    and (self.cel_forest_memory[y,x]
-                            > self.state_change_s2 * threshold[y,x])):
-                    self.cel_forest_state[y,x] = 2
-                    self.cel_forest_memory[y,x] = self.state_change_s2
-                # recover if tree = 2 and memory > threshold 2
-                # and certain number of neighbours are
-                # climax forest as well
-                if (self.cel_forest_state[y,x] == 2
-                    and self.cel_forest_memory[y,x]
-                    > self.state_change_s3 * threshold[y,x]):
-                    state_3_neighbours = \
-                        np.sum(self.cel_forest_state[
-                            y - 1:y + 2,
-                            x - 1:x + 2] == 3)
-                    if state_3_neighbours > self.min_s3_neighbours:
-                        self.cel_forest_state[y,x] = 3
+            # Regeneration
 
-                # finally, increase memory by one
-                self.cel_forest_memory[y,x] += 1
+            # Mask state 1 candidates
+            cel_reg_s1 = ((self.cel_forest_state == 1)
+                          & (self.cel_forest_memory
+                             > (self.state_change_s2 * cel_npp_relative)))
+            # and regenerate.
+            self.cel_forest_state[cel_reg_s1] = 2
+            self.cel_forest_memory[cel_reg_s1] = self.state_change_s2
+            # Mask state 2 candidates,
+            cel_reg_s2 = ((self.cel_forest_state == 2)
+                          & (self.cel_forest_memory
+                             > (self.state_change_s3 * cel_npp_relative)))
+            # check for minimum amount of state 3 neighbors
+            cel_s3 = (self.cel_forest_state == 3).astype('int')
+            cel_s3_neighbors = (
+                ndimage.convolve(cel_s3, neigh_kernel, mode='constant', cval=0)
+                > self.min_s3_neighbours)
+            # and regenerate.
+            self.cel_forest_state[cel_reg_s2 & cel_s3_neighbors] = 3
+
+            # Finally, increase memory of all forest cells by one
+            self.cel_forest_memory[*self.land_cell_index] += 1
 
         # calculate cleared land neighbours for output:
         if self.veg_rainfall > 0:
-            for (y,x) in zip(*self.forest_cell_index):
-                self.cel_cleared_neighs[y,x] = \
-                    np.sum(self.cel_forest_state[
-                        y - 1:y + 2,
-                        x - 1:x + 2] == 1)
+            cel_s1 = (self.cel_forest_state == 1).astype('int')
+            self.cel_cleared_neighs = \
+                ndimage.convolve(cel_s1, neigh_kernel, mode='constant', cval=0)
 
-        # make sure all forest cells have forest states 1-3
-        assert not np.any(self.cel_forest_state[self.forest_cell_index]
+        # make sure all land cells have forest states 1-3
+        assert not np.any(self.cel_forest_state[*self.land_cell_index]
                           < 1), 'forest state is smaller than 1 somewhere'
 
     def get_npp(self):
@@ -533,14 +520,13 @@ class Core(Parameters):
         # agricultural population density (people per cropped land)
         # determines the number of cells that can be cropped.
         ag_pop_density = [
-            pop / (self.stm_cropped_cells_n[stm] * self.area)
+            pop / (cropped_n * self.area) if cropped_n > 0 else 0.
 
-            if self.stm_cropped_cells_n[stm] > 0 else 0.
-
-            for stm, pop in enumerate(self.stm_population)
+            for pop, cropped_n in zip(
+                self.stm_population, self.stm_cropped_cells_n, strict=True)
             ]
 
-        # cel_is_occupied is a mask of all cropped cells of all settlements
+        # cel_is_cropped is a mask of all cropped cells of all settlements
         for cel in chain(*self.stm_cropped_cells):
             self.cel_is_cropped[cel] = 1
 
@@ -561,21 +547,21 @@ class Core(Parameters):
 
             # EQUATION ########################################################
             utility = (
-                cel_bca[infd_index[0], infd_index[1]] - self.estab_cost
+                cel_bca[*infd_index] - self.estab_cost
                 - self.ag_travel_cost * distance / np.sqrt(
                     self.stm_population[stm])
                 ).tolist()
             # EQUATION ########################################################
 
             # do rest of operations using tuple-lists and list-comps
-            infd_index = self.stm_influenced_cells[stm]
-            available = [self.cel_is_cropped[cel] == 0 for cel in infd_index]
+            infd_cells = self.stm_influenced_cells[stm]
+            available = [self.cel_is_cropped[cel] == 0 for cel in infd_cells]
 
             # jointly sort utilities, availability and cells such that cells
             # with highest utility are first.
             sorted_utility, sorted_available, sorted_cells = \
                 list(zip(*sorted(
-                    list(zip(utility, available, infd_index)), reverse=True)))
+                    list(zip(utility, available, infd_cells)), reverse=True)))
             # of these sorted lists, sort filter only available cells
             available_util = list(
                 compress(list(sorted_utility), list(sorted_available)))
@@ -586,7 +572,7 @@ class Core(Parameters):
             cropped_cells = self.stm_cropped_cells[stm]
             # select utilities for these cropped cells
             cropped_utils = [
-                utility[infd_index.index(cel)] if cel in infd_index else -1
+                utility[infd_cells.index(cel)] if cel in infd_cells else -1
 
                 for cel in cropped_cells
                 ]
@@ -747,7 +733,7 @@ class Core(Parameters):
                 (y - infd_index[0])**2 + (x - infd_index[1])**2))
 
             # EQUATION ########################################################
-            self.cel_pop_gradient[infd_index[0], infd_index[1]] += \
+            self.cel_pop_gradient[*infd_index] += \
                 self.stm_population[stm] / (300 * (1 + distance))
             # EQUATION ########################################################
             self.cel_pop_gradient[self.cel_pop_gradient > 15] = 15
@@ -911,14 +897,14 @@ class Core(Parameters):
         if self.eco_income_mode == "mean":
             for stm, infd_cells in enumerate(self.stm_influenced_cells):
                 infd_index = np.array(infd_cells).T
-                self.stm_eco_benefit[stm] = self.r_es_mean \
-                    * np.nanmean(cel_es[infd_index])
+                self.stm_eco_benefit[stm] = \
+                    self.r_es_mean * np.nanmean(cel_es[infd_index])
 
         elif self.eco_income_mode == "sum":
             for stm, infd_cells in enumerate(self.stm_influenced_cells):
-                r = self.r_es_sum
                 infd_index = np.array(infd_cells).T
-                self.stm_eco_benefit[stm] = r * np.nansum(cel_es[infd_index])
+                self.stm_eco_benefit[stm] = \
+                    self.r_es_sum * np.nansum(cel_es[infd_index])
 
         self.stm_eco_benefit[self.stm_population == 0] = 0
         # ##EQUATION###########################################################
