@@ -898,15 +898,13 @@ class Core(Parameters):
             for stm, infd_cells in enumerate(self.stm_influenced_cells):
                 infd_index = np.array(infd_cells).T
                 self.stm_eco_benefit[stm] = \
-                    self.r_es_mean * np.nanmean(cel_es[infd_index])
+                    self.r_es_mean * np.nanmean(cel_es[*infd_index])
 
         elif self.eco_income_mode == "sum":
             for stm, infd_cells in enumerate(self.stm_influenced_cells):
                 infd_index = np.array(infd_cells).T
                 self.stm_eco_benefit[stm] = \
-                    self.r_es_sum * np.nansum(cel_es[infd_index])
-
-        self.stm_eco_benefit[self.stm_population == 0] = 0
+                    self.r_es_sum * np.nansum(cel_es[*infd_index])
         # ##EQUATION###########################################################
 
     def get_trade_income(self):
@@ -1007,30 +1005,30 @@ class Core(Parameters):
         dead_stm_ind = list(set(dead_stm_ind))
 
         # remove settlement attributes from attribute-lists
-        for index in sorted(dead_stm_ind, reverse=True):
+        for dead_stm in sorted(dead_stm_ind, reverse=True):
             self.n_settlements -= 1
             self.n_failed_stm += 1
-            del self.stm_positions[index]
-            del self.stm_age[index]
-            del self.stm_birth_rate[index]
-            del self.stm_death_rate[index]
-            del self.stm_population[index]
-            del self.stm_mig_rate[index]
-            del self.stm_out_mig[index]
-            del self.stm_influenced_cells_n[index]
-            del self.stm_influence_rad[index]
-            del self.stm_cropped_cells_n[index]
-            del self.stm_crop_yield[index]
-            del self.stm_eco_benefit[index]
-            del self.stm_rank[index]
-            del self.stm_degree[index]
-            del self.stm_comp_size[index]
-            del self.stm_centrality[index]
-            del self.stm_trade_income[index]
-            del self.stm_real_income_pc[index]
-            del self.stm_influenced_cells[index]
-            del self.stm_cropped_cells[index]
-            del self.stm_migrants[index]
+            del self.stm_positions[dead_stm]
+            del self.stm_age[dead_stm]
+            del self.stm_birth_rate[dead_stm]
+            del self.stm_death_rate[dead_stm]
+            del self.stm_population[dead_stm]
+            del self.stm_mig_rate[dead_stm]
+            del self.stm_out_mig[dead_stm]
+            del self.stm_influenced_cells_n[dead_stm]
+            del self.stm_influence_rad[dead_stm]
+            del self.stm_cropped_cells_n[dead_stm]
+            del self.stm_crop_yield[dead_stm]
+            del self.stm_eco_benefit[dead_stm]
+            del self.stm_rank[dead_stm]
+            del self.stm_degree[dead_stm]
+            del self.stm_comp_size[dead_stm]
+            del self.stm_centrality[dead_stm]
+            del self.stm_trade_income[dead_stm]
+            del self.stm_real_income_pc[dead_stm]
+            del self.stm_influenced_cells[dead_stm]
+            del self.stm_cropped_cells[dead_stm]
+            del self.stm_migrants[dead_stm]
 
             killed_stm += 1
 
