@@ -26,7 +26,7 @@ setup(
         'networkx',
         'pickleshare',
         'scipy',
-        'matplotlib', 
+        'matplotlib',
         'tqdm'
     ],
     extras_require={

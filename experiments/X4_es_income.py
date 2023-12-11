@@ -24,6 +24,7 @@ from mayasim.model.parameters import Parameters
 
 TEST = True
 
+
 def run_function(n_init=30, kill_cropless=False, better_ess=False,
                  steps=350, filename='./'):
     """
@@ -48,7 +49,6 @@ def run_function(n_init=30, kill_cropless=False, better_ess=False,
     """
 
     # initialize the Model
-
     m = Model(n_init, output_path=filename)
 
     m.kill_cities_without_crops = kill_cropless
@@ -59,27 +59,27 @@ def run_function(n_init=30, kill_cropless=False, better_ess=False,
         m.output_settlement_data = False
 
     # store initial conditions and Parameters
-
-    res = {"initials": pd.DataFrame({"Settlement X Possitions":
-                                     m.stm_positions[0],
-                                     "Settlement Y Possitions":
-                                     m.stm_positions[1],
-                                     "Population":
-                                     m.stm_population}),
-           "Parameters": pd.Series({key: getattr(m, key)
-                                    for key in dir(Parameters)
-                                    if not key.startswith('__')
-                                    and not callable(key)})}
+    res = {
+        "initials": pd.DataFrame({
+            "Settlement X Positions": m.stm_positions[0],
+            "Settlement Y Positions": m.stm_positions[1],
+            "Population": m.stm_population
+        }),
+        "Parameters": pd.Series({
+            key: getattr(m, key)
+            for key in dir(Parameters)
+            if not key.startswith('__')
+            and not callable(key)
+        })
+    }
 
     # run Model
-
     if TEST:
         steps = 3
 
     m.run(steps)
 
     # Retrieve results
-
     res["aggregates"] = m.get_aggregates()
     res["traders aggregates"] = m.get_traders_aggregates()
 
@@ -119,7 +119,7 @@ def run_experiment(argv):
     """
 
     # Parse test switch from input
-    global TEST # pylint: disable=global-statement
+    global TEST  # pylint: disable=global-statement
     if __name__ == '__main__':
         TEST = len(argv) > 1 and argv[1] == 'test'
     else:
@@ -170,16 +170,14 @@ def run_experiment(argv):
         "mean_aggregates": lambda fnames: pd.concat([
             np.load(f, allow_pickle=True)["traders aggregates"]
             for f in fnames
-            ]).groupby(level=0).mean(),
+        ]).groupby(level=0).mean(),
         "sigma_aggregates": lambda fnames: pd.concat([
             np.load(f, allow_pickle=True)["traders aggregates"]
             for f in fnames
-            ]).groupby(level=0).std()
+        ]).groupby(level=0).std()
     }
 
-
     # Run computation and post processing.
-
     if TEST:
         print(f'testing {experiment_folder[:-1]}')
     handle = eh(sample_size=sample_size,

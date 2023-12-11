@@ -48,7 +48,6 @@ def run_function(r_trade=6000., precip_amplitude=1.,
     """
 
     # Initialize Model
-
     if TEST:
         n_init = 100
     m = Model(n_init, output_path=filename)
@@ -57,23 +56,24 @@ def run_function(r_trade=6000., precip_amplitude=1.,
     m.output_level = 'aggregates'
     m.kill_cities_without_crops = kill_cropless
 
-
     if not filename.endswith('s0.pkl'):
         m.output_geographic_data = False
         m.output_settlement_data = False
 
     # Store initial conditions and parameters:
-
-    res = {"initials": pd.DataFrame({"Settlement X Positions":
-                                     m.stm_positions[0],
-                                     "Settlement Y Positions":
-                                     m.stm_positions[1],
-                                     "Population": m.stm_population}),
-           "Parameters": pd.Series({key: getattr(m, key)
-                                    for key in dir(Parameters)
-                                    if not key.startswith('__')
-                                    and not callable(key)})
-           }
+    res = {
+        "initials": pd.DataFrame({
+            "Settlement X Positions": m.stm_positions[0],
+            "Settlement Y Positions": m.stm_positions[1],
+            "Population": m.stm_population
+        }),
+        "Parameters": pd.Series({
+            key: getattr(m, key)
+            for key in dir(Parameters)
+            if not key.startswith('__')
+            and not callable(key)
+        })
+    }
 
     # Run model
 
@@ -123,7 +123,7 @@ def run_experiment(argv):
     """
 
     # Parse test switch from input
-    global TEST # pylint: disable=global-statement
+    global TEST  # pylint: disable=global-statement
     if __name__ == '__main__':
         TEST = len(argv) > 1 and argv[1] == 'test'
     else:
@@ -162,13 +162,12 @@ def run_experiment(argv):
         "mean_aggregates": lambda fnames: pd.concat([
             np.load(f, allow_pickle=True)["traders aggregates"]
             for f in fnames
-            ]).groupby(level=0).mean(),
+        ]).groupby(level=0).mean(),
         "sigma_aggregates": lambda fnames: pd.concat([
             np.load(f, allow_pickle=True)["traders aggregates"]
             for f in fnames
-            ]).groupby(level=0).std()
+        ]).groupby(level=0).std()
     }
-
 
     precip_amplitudes = [0., 0.5, 1., 1.5, 2.] \
         if not TEST else [0., 1.]
@@ -184,7 +183,6 @@ def run_experiment(argv):
              1: 'r_trade',
              2: 'kill_cropless'}
     sample_size = 5 if not TEST else 2
-
 
     if TEST:
         print(f'testing {experiment_folder[:-1]}')

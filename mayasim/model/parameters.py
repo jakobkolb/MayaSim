@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Parameters:
 
     # *************************************************************************
@@ -122,7 +123,7 @@ class Parameters:
 
     # MIGRATION PREFERENCE PARAMETERS
     mig_TC_pref = -0.1
-    mig_ES_pref =  0.3
+    mig_ES_pref = 0.3
 
     min_mig_rate = 0.
     max_mig_rate = 0.15

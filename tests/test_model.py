@@ -5,7 +5,7 @@ errors, no sanity check so far
 
 TODO:
 - split up into testing single methods separately
-- write assertions for all properties calculated 
+- write assertions for all properties calculated
   within test
 """
 import os
@@ -15,9 +15,10 @@ import matplotlib.pyplot as plt
 
 from mayasim.model.core import Core as Model
 
+
 def test_model_output():
     """
-    test run of Model class, saving a plot of some aggregate 
+    test run of Model class, saving a plot of some aggregate
     values to 'MayaSim/output/test_model/aggregates_plot.png'
     """
     n = 30
@@ -48,10 +49,10 @@ def test_model_output():
         'total_population',
         'total_settlements',
         'total_migrants'
-        ]
+    ]
 
     # plot aggregates
-    fig, axes = plt.subplots(ncols=len(measures)-1, figsize=(16, 2))
+    fig, axes = plt.subplots(ncols=len(measures) - 1, figsize=(16, 2))
     for i, meas in enumerate(measures[1:]):
         trj.plot('time', y=meas, ax=axes[i], title=meas)
 

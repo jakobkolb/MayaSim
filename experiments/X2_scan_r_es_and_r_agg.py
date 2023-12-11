@@ -153,15 +153,13 @@ def run_experiment(argv):
     """
 
     # Parse test switch from input
-    global TEST # pylint: disable=global-statement
+    global TEST  # pylint: disable=global-statement
     if __name__ == '__main__':
         TEST = len(argv) > 1 and argv[1] == 'test'
     else:
         TEST = argv == 'test'
 
-
     # Generate paths according to switches and user name
-
     test_folder = ['', 'test_experiments/'][int(TEST)]
     experiment_folder = 'X2_eco_income/'
     raw = 'raw_data/'
@@ -177,7 +175,6 @@ def run_experiment(argv):
         save_path_res = f'./output/{test_folder}{experiment_folder}{res}'
 
     # Generate parameter combinations
-
     index = {0: "r_bca",
              1: "r_eco",
              2: "kill_cropless"}
@@ -214,11 +211,11 @@ def run_experiment(argv):
         "mean_aggregates": lambda fnames: pd.concat([
             np.load(f, allow_pickle=True)["traders aggregates"]
             for f in fnames
-            ]).groupby(level=0).mean(),
+        ]).groupby(level=0).mean(),
         "sigma_aggregates": lambda fnames: pd.concat([
             np.load(f, allow_pickle=True)["traders aggregates"]
             for f in fnames
-            ]).groupby(level=0).std()
+        ]).groupby(level=0).std()
     }
 
     # Run computation and post processing.

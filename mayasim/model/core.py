@@ -17,6 +17,7 @@ from tqdm.auto import trange
 from .parameters import Parameters
 from ._ext.f90routines import f90routines
 
+
 class Core(Parameters):
     """
     This class represents the core of the MayaSim model
@@ -128,7 +129,7 @@ class Core(Parameters):
         # it also sets soil productivity to 1.5 where the elevation is <= 1
         self.cel_soilprod[
             (self.cel_elev <= 1) & (np.logical_not(np.isnan(self.cel_elev)))
-            ] = 1.5
+        ] = 1.5
         # smoothen soil productivity dataset
         self.cel_soilprod = \
             ndimage.gaussian_filter(self.cel_soilprod, sigma=(2, 2), order=0)
@@ -179,7 +180,7 @@ class Core(Parameters):
 
         # define relative coordinates of the neighbourhood of a cell
         # NOTE: why is this not happening within the f90 module?
-        neighbourhood = [(y,x) for y in [-1, 0, 1] for x in [-1, 0, 1]]
+        neighbourhood = [(y, x) for y in [-1, 0, 1] for x in [-1, 0, 1]]
         self.f90neighbourhood = np.asarray(neighbourhood).T
 
         # *********************************************************************
@@ -244,7 +245,7 @@ class Core(Parameters):
 
     def _get_run_variables(self):
         """
-        Returns a dictionary containing all attributes of 'self' 
+        Returns a dictionary containing all attributes of 'self'
         and their current values.
         """
 
@@ -338,7 +339,7 @@ class Core(Parameters):
         cel_npp_relative = np.nanmean(cel_npp) / cel_npp
 
         # neighbor kernel
-        neigh_kernel = np.array([[1, 1, 1],[1, 0, 1],[1, 1, 1]])
+        neigh_kernel = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]])
 
         # Iterate over all cells repeatedly and regenerate or degenerate
         for _ in range(4):
@@ -484,12 +485,12 @@ class Core(Parameters):
         # EQUATION ############################################################
 
         # get cells within influence radius
-        for stm, (y,x) in enumerate(self.stm_positions):
+        for stm, (y, x) in enumerate(self.stm_positions):
             # create ogrid centered around settlement
-            Y, X = np.ogrid[-y:self.map_shape[0]-y, -x:self.map_shape[1]-x]
+            Y, X = np.ogrid[-y:self.map_shape[0] - y, -x:self.map_shape[1] - x]
             # mask cells within influence radius, assuming square cells
-            influence_mask = X*X + Y*Y <= \
-                self.stm_influence_rad[stm]**2/self.area
+            influence_mask = X * X + Y * Y \
+                <= self.stm_influence_rad[stm]**2 / self.area
             # get coordinates of influenced cells as list of tuples (y,x)
             self.stm_influenced_cells[stm] = \
                 list(zip(*np.nonzero(influence_mask)))
@@ -524,7 +525,7 @@ class Core(Parameters):
 
             for pop, cropped_n in zip(
                 self.stm_population, self.stm_cropped_cells_n, strict=True)
-            ]
+        ]
 
         # cel_is_cropped is a mask of all cropped cells of all settlements
         for cel in chain(*self.stm_cropped_cells):
@@ -537,7 +538,7 @@ class Core(Parameters):
         # calculate utility first! This can be accelerated, if calculations
         # are only done in 40 km radius.
 
-        for stm, (y,x) in enumerate(self.stm_positions):
+        for stm, (y, x) in enumerate(self.stm_positions):
 
             # get arrays for vectorized utility calculation
             infd_index = np.array(self.stm_influenced_cells[stm]).T
@@ -550,7 +551,7 @@ class Core(Parameters):
                 cel_bca[*infd_index] - self.estab_cost
                 - self.ag_travel_cost * distance / np.sqrt(
                     self.stm_population[stm])
-                ).tolist()
+            ).tolist()
             # EQUATION ########################################################
 
             # do rest of operations using tuple-lists and list-comps
@@ -575,7 +576,7 @@ class Core(Parameters):
                 utility[infd_cells.index(cel)] if cel in infd_cells else -1
 
                 for cel in cropped_cells
-                ]
+            ]
 
             # sort utilitites and cropped cells to lowest utilities first
             settlement_has_crops = len(cropped_cells) > 0
@@ -588,8 +589,8 @@ class Core(Parameters):
 
             # calculate number of new cells to crop
             number_of_new_cells = np.floor(
-                ag_pop_density[stm]/self.max_people_per_cropped_cell
-                ).astype('int')
+                ag_pop_density[stm] / self.max_people_per_cropped_cell
+            ).astype('int')
             # and crop them by selecting cells with positive utility from the
             # beginning of the list
 
@@ -639,7 +640,7 @@ class Core(Parameters):
 
                     if occupied_util[cel] < 0
                     and occupied_cells[cel] in self.stm_cropped_cells[stm]
-                    ]
+                ]
 
                 # and release them.
                 for cel in useless_cropped_cells:
@@ -669,7 +670,7 @@ class Core(Parameters):
         self.stm_death_rate = [
             -death_rate_diff * income + self.max_death_rate
             for income in self.stm_real_income_pc
-            ]
+        ]
 
         self.stm_death_rate = list(np.clip(
             self.stm_death_rate, self.min_death_rate, self.max_death_rate))
@@ -681,11 +682,11 @@ class Core(Parameters):
             birth_rate_diff = self.max_birth_rate - self.min_birth_rate
 
             self.stm_birth_rate = [
-                -birth_rate_diff / 10000. * pop +
-                self.shift if pop > 5000 else self.birth_rate_parameter
+                - birth_rate_diff / 10000. * pop
+                + self.shift if pop > 5000 else self.birth_rate_parameter
 
                 for pop in self.stm_population
-                ]
+            ]
 
         # population grows according to effective growth rate
         self.stm_population = [
@@ -693,12 +694,12 @@ class Core(Parameters):
 
             for b_rate, d_rate, pop in zip(
                 self.stm_birth_rate, self.stm_death_rate, self.stm_population,
-                strict = True)
-            ]
+                strict=True)
+        ]
 
         self.stm_population = [
             pop if pop > 0 else 0 for pop in self.stm_population
-            ]
+        ]
 
         mig_rate_diffe = self.max_mig_rate - self.min_mig_rate
 
@@ -707,7 +708,7 @@ class Core(Parameters):
         self.stm_mig_rate = [
             -mig_rate_diffe * income + self.max_mig_rate
             for income in self.stm_real_income_pc
-            ]
+        ]
 
         self.stm_mig_rate = list(
             np.clip(self.stm_mig_rate, self.min_mig_rate, self.max_mig_rate))
@@ -716,7 +717,7 @@ class Core(Parameters):
             int(m_rate * pop)
             for m_rate, pop in zip(
                 self.stm_mig_rate, self.stm_population, strict=True)
-            ]
+        ]
 
         self.stm_out_mig = [
             value if value > 0 else 0 for value in self.stm_out_mig]
@@ -726,7 +727,7 @@ class Core(Parameters):
         # pop gradient quantifies the disturbance of the forest by population
         self.cel_pop_gradient = np.zeros(self.map_shape)
 
-        for stm, (y,x) in enumerate(self.stm_positions):
+        for stm, (y, x) in enumerate(self.stm_positions):
 
             infd_index = np.array(self.stm_influenced_cells[stm]).T
             distance = np.sqrt(self.area * (
@@ -757,8 +758,7 @@ class Core(Parameters):
             else 0
 
             for pop in self.stm_population
-            ]
-
+        ]
 
     @property
     def build_routes(self):
@@ -773,7 +773,7 @@ class Core(Parameters):
         # create index-array of stm positions to vectorize distance calculation
         positions = np.array(self.stm_positions).T
 
-        for stm, (y,x) in enumerate(self.stm_positions):
+        for stm, (y, x) in enumerate(self.stm_positions):
             # stm with rank > 0 are traders and establish links to neighbours
             # NOTE: only if they do not already have 'rank' trading partners?
             if self.stm_degree[stm] < self.stm_rank[stm]:
@@ -788,9 +788,9 @@ class Core(Parameters):
                 # collect neighbors within radius, but not self
                 # and omit those that are already connected.
                 candidates = (
-                    (0.5 < (distances <= trade_radius**2/self.area))
+                    (0.5 < (distances <= trade_radius**2 / self.area))
                     & (self.stm_adjacency[stm] == 0)
-                    )
+                )
 
                 # if trading candidates found, connect to largest
                 if sum(candidates) != 0:
@@ -832,15 +832,13 @@ class Core(Parameters):
         # else, just fill the centrality vector with ones.
 
         if l_a > 0:
-            tmp_comp_size, tmp_degree = \
-                f90routines.f90sparsecomponents(
-                    i_c, a, j_a,self.n_settlements,l_ic, l_a
-                    )
-            self.stm_comp_size, self.stm_degree = \
-                list(tmp_comp_size), list(tmp_degree)
+            tmp_comp_size, tmp_degree = f90routines.f90sparsecomponents(
+                i_c, a, j_a, self.n_settlements, l_ic, l_a)
+            self.stm_comp_size = list(tmp_comp_size)
+            self.stm_degree = list(tmp_degree)
         elif l_a == 0:
-            self.stm_comp_size, self.stm_degree = \
-                [0] * (l_ic - 1), [0] * (l_ic - 1)
+            self.stm_comp_size = [0] * (l_ic - 1)
+            self.stm_degree = [0] * (l_ic - 1)
 
     def get_centrality(self):
         # convert adjacency matrix to compressed sparse row format
@@ -862,10 +860,8 @@ class Core(Parameters):
         # else, just fill the centrality vector with ones.
 
         if l_a > 0:
-            tmp_centrality = \
-                f90routines.f90sparsecentrality(
-                    i_c, a, j_a, self.n_settlements, l_ic, l_a
-                    )
+            tmp_centrality = f90routines.f90sparsecentrality(
+                i_c, a, j_a, self.n_settlements, l_ic, l_a)
             self.stm_centrality = list(tmp_centrality)
         elif l_a == 0:
             self.stm_centrality = [1] * (l_ic - 1)
@@ -914,7 +910,7 @@ class Core(Parameters):
 
             for comp_size, centrality in zip(
                 self.stm_comp_size, self.stm_centrality, strict=True)
-            ]
+        ]
 
         self.stm_trade_income = [
             self.r_trade if trade_income > 1
@@ -923,7 +919,7 @@ class Core(Parameters):
 
             for trade_income, degree in zip(
                 self.stm_trade_income, self.stm_degree, strict=True)
-            ]
+        ]
         # ##EQUATION###########################################################
 
     def get_real_income_pc(self):
@@ -937,7 +933,7 @@ class Core(Parameters):
                 self.stm_crop_yield, self.stm_eco_benefit,
                 self.stm_trade_income, self.stm_population,
                 strict=True)
-            ]
+        ]
 
     def migration(self, cel_es):
         # if outmigration rate exceeds threshold, found new settlement
@@ -953,7 +949,7 @@ class Core(Parameters):
         # create index-array of stm positions to vectorize distance calculation
         positions = np.array(self.stm_positions).T
 
-        for stm, (y,x) in enumerate(self.stm_positions):
+        for stm, (y, x) in enumerate(self.stm_positions):
 
             if (self.stm_out_mig[stm] > 400 and len(uninfd_index[0]) > 0
                     and np.random.rand() <= 0.5):
@@ -975,7 +971,7 @@ class Core(Parameters):
                 # check if other settlements are near new location
                 neighbours = (
                     (new_y - positions[0])**2 + (new_x - positions[1])**2
-                    ) <= 7.5 **2/self.area
+                ) <= 7.5**2 / self.area
                 # if not, spawn settlement
                 if np.sum(neighbours) == 0:
                     self.spawn_settlement(new_y, new_x, mig_pop)
@@ -992,14 +988,14 @@ class Core(Parameters):
             stm for stm in range(self.n_settlements)
 
             if self.stm_population[stm] <= self.min_stm_size
-            ]
+        ]
 
         if self.kill_stm_without_crops:
             dead_stm_ind += [
                 stm for stm in range(self.n_settlements)
 
                 if not self.stm_cropped_cells[stm]
-                ]
+            ]
 
         # only keep unique entries
         dead_stm_ind = list(set(dead_stm_ind))
@@ -1034,7 +1030,7 @@ class Core(Parameters):
 
         # special cases:
         self.stm_adjacency = \
-            np.delete(np.delete(self.stm_adjacency,dead_stm_ind, axis=0),
+            np.delete(np.delete(self.stm_adjacency, dead_stm_ind, axis=0),
                       dead_stm_ind, axis=1)
 
         return killed_stm
@@ -1056,9 +1052,9 @@ class Core(Parameters):
 
         # extend all variables to include new stm
         self.n_settlements += 1
-        self.stm_positions.append((y,x))
-        self.stm_influenced_cells.append([(y,x)])
-        self.stm_cropped_cells.append([(y,x)])
+        self.stm_positions.append((y, x))
+        self.stm_influenced_cells.append([(y, x)])
+        self.stm_cropped_cells.append([(y, x)])
 
         n = len(self.stm_adjacency)
         self.stm_adjacency = np.append(self.stm_adjacency, [[0] * n], 0)
@@ -1095,7 +1091,7 @@ class Core(Parameters):
         self.init_output()
 
         # initialize progress bar
-        t_range = trange(1, t_max+1,
+        t_range = trange(1, t_max + 1,
                          desc='running MayaSim',
                          postfix={'population': sum(self.stm_population)})
 
@@ -1150,7 +1146,6 @@ class Core(Parameters):
             self.step_output(
                 timestep, cel_npp, cel_wf, cel_ag, cel_es, cel_bca, abandoned,
                 sown, built, lost, new_settlements, killed_settlements)
-
 
     def init_output(self):
         """
@@ -1223,7 +1218,7 @@ class Core(Parameters):
             self.update_aggregates(
                 timestep, [cel_npp, cel_wf, cel_ag, cel_es, cel_bca],
                 built, lost, new_settlements, killed_settlements
-                )
+            )
             self.update_traders_aggregates(timestep)
 
         # save maps of spatial data
@@ -1251,12 +1246,12 @@ class Core(Parameters):
             'population', 'real income', 'ag income', 'es income',
             'trade income', 'position', 'out migration',
             'degree'
-            ]
+        ]
         data = [
             self.stm_population, self.stm_real_income_pc, self.stm_crop_yield,
             self.stm_eco_benefit, self.stm_trade_income, self.stm_positions,
             self.stm_migrants, self.stm_degree
-            ]
+        ]
 
         data = list(map(list, zip(*data)))
 
@@ -1300,7 +1295,7 @@ class Core(Parameters):
             'population': self.stm_population,
             'elev': self.cel_elev,
             'rank': self.stm_rank
-            }
+        }
 
         with open(self.geographic_output_path(timestep), 'wb') as f:
             pkl.dump(data, f)
@@ -1317,7 +1312,7 @@ class Core(Parameters):
             'forest_state_3_cells', 'forest_state_2_cells',
             'forest_state_1_cells', 'MAP', 'max_npp', 'mean_waterflow',
             'max_AG', 'max_ES', 'max_bca', 'max_soil_deg', 'max_pop_grad'
-            ])
+        ])
 
     def init_traders_aggregates(self):
         self.traders_aggregates.append([
@@ -1326,7 +1321,7 @@ class Core(Parameters):
             'total_influenced_cells', 'total_trade_links',
             'total_income_agriculture', 'total_income_ecosystem',
             'total_income_trade'
-            ])
+        ])
 
     def update_aggregates(
             self, time: int, args: list[NDArray], built: int, lost: int,
@@ -1336,7 +1331,7 @@ class Core(Parameters):
         total_population = sum(self.stm_population)
         try:
             max_population = np.nanmax(self.stm_population)
-        except: # pylint: disable=bare-except
+        except:  # pylint: disable=bare-except
             max_population = float('nan')
         total_migrangs = sum(self.stm_migrants)
         total_settlements = len(self.stm_population)
@@ -1349,10 +1344,10 @@ class Core(Parameters):
         mean_cluster_size = (
             float(sum(self.stm_comp_size)) / number_of_components
             if number_of_components > 0 else 0
-            )
+        )
         try:
             max_cluster_size = max(self.stm_comp_size)
-        except: # pylint: disable=bare-except
+        except:  # pylint: disable=bare-except
             max_cluster_size = 0
         self.max_cluster_size = max_cluster_size
         total_cropped_cells = sum(self.stm_cropped_cells_n)
@@ -1376,7 +1371,7 @@ class Core(Parameters):
             np.nanmax(args[4]),
             np.nanmax(self.cel_soil_deg),
             np.nanmax(self.cel_pop_gradient)
-            ])
+        ])
 
     def update_traders_aggregates(self, time: int):
 
@@ -1401,7 +1396,7 @@ class Core(Parameters):
             total_settlements, total_cropped_cells,
             total_influenced_cells, total_trade_links, income_agriculture,
             income_ecosystem, income_trade
-            ])
+        ])
 
     def get_aggregates(self):
         if self.calc_aggregates:

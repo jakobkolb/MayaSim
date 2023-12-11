@@ -23,6 +23,7 @@ from mayasim.model.parameters import Parameters
 
 TEST = True
 
+
 def run_function(n_init=30, kill_cropless=False, steps=350, filename='./'):
     """
     Set up the Model for default Parameters and determine
@@ -113,7 +114,7 @@ def run_experiment(argv):
     """
 
     # Parse test switch from input
-    global TEST # pylint: disable=global-statement
+    global TEST  # pylint: disable=global-statement
     if __name__ == '__main__':
         TEST = len(argv) > 1 and argv[1] == 'test'
     else:
