@@ -38,7 +38,7 @@ class Core(Parameters):
     """
     # pylint: disable=too-many-statements
     def __init__(self,
-                 n: int = 30,
+                 n_init: int = 30,
                  calc_aggregates: bool = True,
                  output_path: str = None):
         """
@@ -46,13 +46,13 @@ class Core(Parameters):
 
         Parameters
         ----------
-        n: int
-            number of settlements to initialize,
+        n_init: int
+            initial number of settlements,
         calc_aggregates: bool
-            switch to calculate aggregate data in every
-            timestep and to store it in self.aggregates,
+            calculate aggregate data in every
+            timestep and store it in self.aggregates,
         output_path: string
-            if set, spatial data output will
+            if given, spatial data output will
             be written to this path.
         """
 
@@ -189,39 +189,39 @@ class Core(Parameters):
         # Population gradient (influencing the forest)
         self.cel_pop_gradient = np.zeros(self.map_shape)
 
-        self.n_settlements = n
+        self.n_settlements = n_init
         # randomly distribute specified number of settlements on the map
         self.stm_positions = sample(self.land_cells, self.n_settlements)
 
-        self.stm_age = [0] * n
+        self.stm_age = [0] * n_init
 
         # demographic variables
-        self.stm_birth_rate = [self.birth_rate_parameter] * n
-        self.stm_death_rate = [0.1 + 0.05 * r for r in list(rand(n))]
+        self.stm_birth_rate = [self.birth_rate_parameter] * n_init
+        self.stm_death_rate = [0.1 + 0.05 * r for r in list(rand(n_init))]
         self.stm_population = list(
             np.random.randint(self.min_init_inhabitants,
                               self.max_init_inhabitants,
-                              n).astype(float))
-        self.stm_mig_rate = [0.] * n
-        self.stm_out_mig = [0] * n
-        self.stm_migrants = [0] * n
+                              n_init).astype(float))
+        self.stm_mig_rate = [0.] * n_init
+        self.stm_out_mig = [0] * n_init
+        self.stm_migrants = [0] * n_init
         self.n_failed_stm = 0
 
         # area of influence
-        self.stm_influenced_cells_n = [0] * n
-        self.stm_influence_rad = [0.] * n
-        self.stm_influenced_cells = [None] * n # will be list of lists
+        self.stm_influenced_cells_n = [0] * n_init
+        self.stm_influence_rad = [0.] * n_init
+        self.stm_influenced_cells = [None] * n_init
 
         # agriculture/cropping
         self.cel_is_cropped = np.zeros(self.map_shape)
-        self.stm_cropped_cells_n = [0] * n
-        self.stm_cropped_cells = [None] * n # will be list of lists
+        self.stm_cropped_cells_n = [0] * n_init
+        self.stm_cropped_cells = [None] * n_init
         # add settlement positions until get_cropped_cells() is first called
-        for stm, (y,x) in enumerate(self.stm_positions):
-            self.stm_cropped_cells[stm] = [(y,x)]
+        for stm, pos in enumerate(self.stm_positions):
+            self.stm_cropped_cells[stm] = [pos]
 
-        self.stm_crop_yield = [0.] * n
-        self.stm_eco_benefit = [0.] * n
+        self.stm_crop_yield = [0.] * n_init
+        self.stm_eco_benefit = [0.] * n_init
 
         # components of ecosystem service income
         self.cel_es_ag = np.zeros(self.map_shape, dtype=float)
@@ -231,16 +231,16 @@ class Core(Parameters):
         self.cel_es_pg = np.zeros(self.map_shape, dtype=float)
 
         # Trade Variables
-        self.stm_adjacency = np.zeros((n, n))
-        self.stm_rank = [0] * n
-        self.stm_degree = [0] * n
-        self.stm_comp_size = [0] * n
-        self.stm_centrality = [0] * n
-        self.stm_trade_income = [0] * n
+        self.stm_adjacency = np.zeros((n_init, n_init))
+        self.stm_rank = [0] * n_init
+        self.stm_degree = [0] * n_init
+        self.stm_comp_size = [0] * n_init
+        self.stm_centrality = [0] * n_init
+        self.stm_trade_income = [0] * n_init
         self.max_cluster_size = 0
 
         # total real income per capita
-        self.stm_real_income_pc = [0] * n
+        self.stm_real_income_pc = [0] * n_init
 
     def _get_run_variables(self):
         """
