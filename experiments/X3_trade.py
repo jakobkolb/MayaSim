@@ -27,7 +27,7 @@ TEST = True
 
 
 def run_function(r_trade=6000., precip_amplitude=1.,
-                 n=30, kill_cropless=False,
+                 n_init=30, kill_cropless=False,
                  steps=350, filename='./'):
     """Initializes and runs model and retrieves and saves data afterwards.
 
@@ -38,7 +38,7 @@ def run_function(r_trade=6000., precip_amplitude=1.,
         1. means original modulation >1. means amplified modulation.
     r_trade: float
         value of trade income
-    n: int
+    n_init: int
         number of initial settlements
     kill_cities_without_cropps: bool
         switch to set whether or not to kill settlements without agriculture
@@ -50,8 +50,8 @@ def run_function(r_trade=6000., precip_amplitude=1.,
     # Initialize Model
 
     if TEST:
-        n = 100
-    m = Model(n=n, output_path=filename)
+        n_init = 100
+    m = Model(n_init, output_path=filename)
     m.r_trade = r_trade
     m.precipitation_amplitude = precip_amplitude
     m.output_level = 'aggregates'
@@ -146,28 +146,28 @@ def run_experiment(argv):
         save_path_res = f'./output/{test_folder}{experiment_folder}{res}'
 
     name1 = "aggregates"
-    estimators1 = {"mean_aggregates":
-                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["aggregates"]
-                                            for f in fnames]).groupby(
-                      level=0).mean(),
-                  "sigma_aggregates":
-                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["aggregates"]
-                                            for f in fnames]).groupby(
-                          level=0).std()
-                  }
+    estimators1 = {
+        "mean_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["aggregates"]
+            for f in fnames
+        ]).groupby(level=0).mean(),
+        "sigma_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["aggregates"]
+            for f in fnames
+        ]).groupby(level=0).std()
+    }
+
     name2 = "traders_aggregates"
     estimators2 = {
-                  "mean_aggregates":
-                      lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["traders aggregates"]
-                                            for f in fnames]).groupby(
-                          level=0).mean(),
-                  "sigma_aggregates":
-                      lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["traders aggregates"]
-                                            for f in fnames]).groupby(
-                          level=0).std()
-                  }
+        "mean_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["traders aggregates"]
+            for f in fnames
+            ]).groupby(level=0).mean(),
+        "sigma_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["traders aggregates"]
+            for f in fnames
+            ]).groupby(level=0).std()
+    }
 
 
     precip_amplitudes = [0., 0.5, 1., 1.5, 2.] \

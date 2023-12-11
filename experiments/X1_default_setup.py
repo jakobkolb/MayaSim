@@ -23,7 +23,7 @@ from mayasim.model.parameters import Parameters
 
 TEST = True
 
-def run_function(n=30, kill_cropless=False, steps=350, filename='./'):
+def run_function(n_init=30, kill_cropless=False, steps=350, filename='./'):
     """
     Set up the Model for default Parameters and determine
     which parts of the output are saved where.
@@ -33,7 +33,7 @@ def run_function(n=30, kill_cropless=False, steps=350, filename='./'):
 
     Parameters:
     -----------
-    n : int > 0
+    n_init : int > 0
         initial number of settlements on the map,
     kill_cropless: bool
         switch to either kill settlements without crops or not
@@ -45,7 +45,7 @@ def run_function(n=30, kill_cropless=False, steps=350, filename='./'):
 
     # initialize the Model
 
-    m = Model(n, output_path=filename)
+    m = Model(n_init, output_path=filename)
 
     m.kill_cities_without_crops = kill_cropless
 
@@ -149,15 +149,16 @@ def run_experiment(argv):
 
     name = "mayasim_default_setup"
 
-    estimators = {"<mean_aggregates>":
-                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["aggregates"]
-                                            for f in
-                                            fnames]).groupby(level=0).mean(),
-                  "<sigma_aggregates>":
-                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["aggregates"]
-                                            for f in
-                                            fnames]).groupby(level=0).std()
-                  }
+    estimators = {
+        "<mean_aggregates>": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["aggregates"]
+            for f in fnames
+        ]).groupby(level=0).mean(),
+        "<sigma_aggregates>": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["aggregates"]
+            for f in fnames
+        ]).groupby(level=0).std()
+    }
 
     # Run computation and post processing.
 

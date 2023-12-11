@@ -24,7 +24,7 @@ from mayasim.model.parameters import Parameters
 
 TEST = True
 
-def run_function(n=30, kill_cropless=False, better_ess=False,
+def run_function(n_init=30, kill_cropless=False, better_ess=False,
                  steps=350, filename='./'):
     """
     Set up the Model for default Parameters and determine
@@ -35,7 +35,7 @@ def run_function(n=30, kill_cropless=False, better_ess=False,
 
     Parameters:
     -----------
-    n : int > 0
+    n_init : int > 0
         initial number of settlements on the map,
     kill_cropless: bool
         switch to either kill settlements without crops or not
@@ -49,7 +49,7 @@ def run_function(n=30, kill_cropless=False, better_ess=False,
 
     # initialize the Model
 
-    m = Model(n, output_path=filename)
+    m = Model(n_init, output_path=filename)
 
     m.kill_cities_without_crops = kill_cropless
     m.better_ess = better_ess
@@ -154,28 +154,28 @@ def run_experiment(argv):
     # Define names and callables for post processing
 
     name1 = "aggregates"
-    estimators1 = {"mean_aggregates":
-                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["aggregates"]
-                                            for f in fnames]).groupby(
-                      level=0).mean(),
-                  "sigma_aggregates":
-                  lambda fnames: pd.concat([np.load(f, allow_pickle=True)["aggregates"]
-                                            for f in fnames]).groupby(
-                          level=0).std()
-                  }
+    estimators1 = {
+        "mean_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["aggregates"]
+            for f in fnames
+        ]).groupby(level=0).mean(),
+        "sigma_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["aggregates"]
+            for f in fnames
+        ]).groupby(level=0).std()
+    }
+
     name2 = "traders_aggregates"
     estimators2 = {
-                  "mean_aggregates":
-                      lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["traders aggregates"]
-                                            for f in fnames]).groupby(
-                          level=0).mean(),
-                  "sigma_aggregates":
-                      lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["traders aggregates"]
-                                            for f in fnames]).groupby(
-                          level=0).std()
-                  }
+        "mean_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["traders aggregates"]
+            for f in fnames
+            ]).groupby(level=0).mean(),
+        "sigma_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["traders aggregates"]
+            for f in fnames
+            ]).groupby(level=0).std()
+    }
 
 
     # Run computation and post processing.

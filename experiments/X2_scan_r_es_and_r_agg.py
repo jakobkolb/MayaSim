@@ -48,7 +48,7 @@ TEST = True
 
 
 def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
-                 n=30, crop_income_mode='sum',
+                 n_init=30, crop_income_mode='sum',
                  kill_cropless=True, steps=350, filename='./'):
     """
     Set up the Model for different Parameters and determine
@@ -65,7 +65,7 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
         determines whether the population grows
         unbounded or if population growth decreases
         with income per capita and population density.
-    n : int > 0
+    n_init : int > 0
         initial number of settlements on the map
     crop_income_mode : string
         defines the mode of crop income calculation.
@@ -79,7 +79,7 @@ def run_function(r_bca=0.2, r_eco=0.0002, population_control=False,
 
     # initialize the Model
 
-    m = Model(n, output_path=filename)
+    m = Model(n_init, output_path=filename)
     if not filename.endswith('s0.pkl'):
         m.output_geographic_data = False
         m.output_settlement_data = False
@@ -198,29 +198,28 @@ def run_experiment(argv):
     # Define names and callables for post processing
 
     name1 = "aggregates"
+    estimators1 = {
+        "mean_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["aggregates"]
+            for f in fnames
+        ]).groupby(level=0).mean(),
+        "sigma_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["aggregates"]
+            for f in fnames
+        ]).groupby(level=0).std()
+    }
 
-    estimators1 = {"mean_aggregates":
-                      lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["aggregates"]
-                                 for f in fnames]).groupby(level=0).mean(),
-                  "sigma_aggregates":
-                      lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["aggregates"]
-                                 for f in fnames]).groupby(level=0).std()
-                  }
     name2 = "traders_aggregates"
     estimators2 = {
-                  "mean_aggregates":
-                      lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["traders aggregates"]
-                                            for f in fnames]).groupby(
-                          level=0).mean(),
-                  "sigma_aggregates":
-                      lambda fnames:
-                      pd.concat([np.load(f, allow_pickle=True)["traders aggregates"]
-                                            for f in fnames]).groupby(
-                          level=0).std()
-                  }
+        "mean_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["traders aggregates"]
+            for f in fnames
+            ]).groupby(level=0).mean(),
+        "sigma_aggregates": lambda fnames: pd.concat([
+            np.load(f, allow_pickle=True)["traders aggregates"]
+            for f in fnames
+            ]).groupby(level=0).std()
+    }
 
     # Run computation and post processing.
 
