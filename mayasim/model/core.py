@@ -468,7 +468,7 @@ class Core(Parameters):
         return self.max_yield * (1 - self.origin_shift * np.exp(
             np.float128(-self.slope_yield * cel_ag)))
 
-    def get_influenced_cells(self):
+    def update_influenced_cells(self):
         """
         For each settlement, calculate influence radius and write a list of
         cells within that radius to ``self.stm_influenced_cells``.
@@ -486,14 +486,17 @@ class Core(Parameters):
 
         # get cells within influence radius
         for stm, (y, x) in enumerate(self.stm_positions):
-            # create ogrid centered around settlement
-            Y, X = np.ogrid[-y:self.map_shape[0] - y, -x:self.map_shape[1] - x]
-            # mask cells within influence radius, assuming square cells
-            influence_mask = X * X + Y * Y \
-                <= self.stm_influence_rad[stm]**2 / self.area
-            # get coordinates of influenced cells as list of tuples (y,x)
-            self.stm_influenced_cells[stm] = \
-                list(zip(*np.nonzero(influence_mask)))
+            rad = np.ceil(self.stm_influence_rad[stm] / np.sqrt(self.area))
+            # create square coordinate-grid of settlement's neighboring cells
+            coords = np.mgrid[
+                max(y - rad, 0):min(y + rad, self.map_shape[0]),
+                max(x - rad, 0):min(x + rad, self.map_shape[1])
+            ].reshape(2, -1).astype('int')
+            # mask those that are within influence radius
+            infd_mask = ((coords[0] - y)**2 + (coords[1] - x)**2) \
+                <= (self.stm_influence_rad[stm]**2 / self.area)
+            # select coordinates and save to list of tuples
+            self.stm_influenced_cells[stm] = list(zip(*coords[:, infd_mask]))
 
         # count influenced cells
         self.stm_influenced_cells_n = \
@@ -1097,7 +1100,7 @@ class Core(Parameters):
             # society
             if len(self.stm_population) > 0:
                 # ag income
-                self.get_influenced_cells()
+                self.update_influenced_cells()
                 abandoned, sown = self.update_cropped_cells(cel_bca)
                 self.get_crop_income(cel_bca)
                 # es income
