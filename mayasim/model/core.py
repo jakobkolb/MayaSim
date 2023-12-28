@@ -470,7 +470,7 @@ class Core(Parameters):
 
     def get_influenced_cells(self):
         """
-        For all settlements, calculate influence radius write a list of
+        For each settlement, calculate influence radius and write a list of
         cells within that radius to ``self.stm_influenced_cells``.
 
         NOTE: these are the cells that are closer than population^0.8/60
@@ -500,16 +500,15 @@ class Core(Parameters):
             [len(ifd) for ifd in self.stm_influenced_cells]
 
     # pylint: disable=too-many-locals
-    def get_cropped_cells(self, cel_bca: NDArray):
+    def update_cropped_cells(self, cel_bca: NDArray):
         """
-        Updates the cropped cells for each stm with positive population.
-        Calculates the utility for each cell (depending on distance from
-        the respective stm) If population per cropped cell is lower then
-        min_people_per_cropped_cell, cells are abandoned.
-        Cells with negative utility are also abandoned.
-        If population per cropped cell is higher than
-        max_people_per_cropped_cell, new cells are cropped.
-        Newly cropped cells are chosen such that they have highest utility
+        Update cropped cells for each settlement.
+        Cell utilities are calculated depending on cell distance from
+        the respective settlement.
+        New cells are cropped if population per cropped cell is higher than
+        max_people_per_cropped_cell, choosing highest utility cells first.
+        Cells are abandoned if population per cropped cell is lower than
+        min_people_per_cropped_cell or if cells have negative utility.
         """
         abandoned = 0
         sown = 0
@@ -518,7 +517,7 @@ class Core(Parameters):
         self.stm_cropped_cells_n = \
             [len(crp) for crp in self.stm_cropped_cells]
 
-        # agricultural population density (people per cropped land)
+        # agricultural population density (inhabitants per cropped cell)
         # determines the number of cells that can be cropped.
         ag_pop_density = [
             pop / (cropped_n * self.area) if cropped_n > 0 else 0.
@@ -534,18 +533,15 @@ class Core(Parameters):
         # the age of settlements is increased here.
         self.stm_age = [age + 1 for age in self.stm_age]
 
-        # for each settlement: which cells to crop ?
-        # calculate utility first! This can be accelerated, if calculations
-        # are only done in 40 km radius.
-
+        # update cropped cells for each settlement
         for stm, (y, x) in enumerate(self.stm_positions):
 
-            # get arrays for vectorized utility calculation
+            # CALCULATE UTILITIES of all influenced cells
+            # get influenced cells as array
             infd_index = np.array(self.stm_influenced_cells[stm]).T
             distance = np.sqrt(
                 (self.height_cell * (y - infd_index[0]))**2
                 + (self.width_cell * (x - infd_index[1]))**2)
-
             # EQUATION ########################################################
             utility = (
                 cel_bca[*infd_index] - self.estab_cost
@@ -563,29 +559,14 @@ class Core(Parameters):
             sorted_utility, sorted_available, sorted_cells = \
                 list(zip(*sorted(
                     list(zip(utility, available, infd_cells)), reverse=True)))
-            # of these sorted lists, sort filter only available cells
+            # select utilities and cell coordinates of only available cells
             available_util = list(
                 compress(list(sorted_utility), list(sorted_available)))
             available_cells = list(
                 compress(list(sorted_cells), list(sorted_available)))
 
-            # save local copy of all cropped cells
-            cropped_cells = self.stm_cropped_cells[stm]
-            # select utilities for these cropped cells
-            cropped_utils = [
-                utility[infd_cells.index(cel)] if cel in infd_cells else -1
-
-                for cel in cropped_cells
-            ]
-
-            # sort utilitites and cropped cells to lowest utilities first
-            settlement_has_crops = len(cropped_cells) > 0
-
-            if settlement_has_crops:
-                occupied_util, occupied_cells = \
-                    zip(*sorted(list(zip(cropped_utils, cropped_cells))))
-
-            # 1.) include new cells if population exceeds a threshold
+            # 1.) CROP NEW CELLS if population exceeds a threshold
+            # -----------------------------------------------------------------
 
             # calculate number of new cells to crop
             number_of_new_cells = np.floor(
@@ -593,7 +574,6 @@ class Core(Parameters):
             ).astype('int')
             # and crop them by selecting cells with positive utility from the
             # beginning of the list
-
             for n in range(min([number_of_new_cells, len(available_util)])):
                 if available_util[n] > 0:
                     self.stm_cropped_cells[stm].append(available_cells[n])
@@ -601,60 +581,59 @@ class Core(Parameters):
 
                     sown += 1
 
-            if settlement_has_crops:
+            # END CURRENT LOOP HERE if settlement had no cropped cells before
+            if self.stm_cropped_cells_n[stm] == 0:
+                continue
 
-                # 2.) abandon cells if population too low
-                # after settlement's age > 5 years
+            # select utilities of actually cropped cells
+            cropped_utils = [
+                utility[infd_cells.index(cel)] if cel in infd_cells else -1
+                for cel in self.stm_cropped_cells[stm]
+            ]
 
-                if (ag_pop_density[stm] < self.min_people_per_cropped_cell
-                        and self.stm_age[stm] > 5):
+            # sort utilitites and cropped cells to lowest utilities first
+            cropped_utils, cropped_cells = zip(*sorted(list(zip(
+                cropped_utils, self.stm_cropped_cells[stm]))))
 
-                    # There are some inconsistencies here. Cells are abandoned,
-                    # if the 'people per cropped land' is lower then a
-                    # threshold for 'people per cropped cells. Then the
-                    # number of cells to abandon is calculated as 30/people
-                    # per cropped land. Why?! (check the original version!)
+            # 2.) ABANDON CELLS if population too low
+            #     and settlement older than > 5 timesteps
+            # -----------------------------------------------------------------
+            if (ag_pop_density[stm] < self.min_people_per_cropped_cell
+                    and self.stm_age[stm] > 5):
+                # NOTE: Some inconsistencies here. Cells are abandoned,
+                # if the 'people per cropped land' is lower than a
+                # threshold for 'people per cropped cells. Then the
+                # number of cells to abandon is calculated as 30/people
+                # per cropped land. Why?! (check the original version!)
+                lost_cells_n = np.ceil(30 / ag_pop_density[stm]).astype('int')
 
-                    number_of_lost_cells = np.ceil(
-                        30 / ag_pop_density[stm]).astype('int')
-
-                    # TO DO: recycle utility and cell list to do this faster.
-                    # therefore, filter cropped cells from utility list
-                    # and delete last n cells.
-
-                    for n in range(min([number_of_lost_cells,
-                                        len(occupied_cells)])):
-
-                        self.stm_cropped_cells[stm] \
-                            .remove(occupied_cells[n])
-                        self.cel_is_cropped[occupied_cells[n]] = 0
-
-                        abandoned += 1
-
-                # 3.) abandon cells with utility <= 0
-
-                # find cells that have negative utility and belong
-                # to stm under consideration,
-                useless_cropped_cells = [
-                    occupied_cells[cel] for cel in range(len(occupied_cells))
-
-                    if occupied_util[cel] < 0
-                    and occupied_cells[cel] in self.stm_cropped_cells[stm]
-                ]
-
-                # and release them.
-                for cel in useless_cropped_cells:
-                    try:
-                        self.stm_cropped_cells[stm] \
-                            .remove(cel)
-                    except ValueError:
-                        print('ERROR: Useless cell gone already')
-                    self.cel_is_cropped[cel] = 0
+                for n in range(min([lost_cells_n,
+                                    self.stm_cropped_cells_n[stm]])):
+                    self.stm_cropped_cells[stm].remove(cropped_cells[n])
+                    self.cel_is_cropped[cropped_cells[n]] = 0
 
                     abandoned += 1
 
-        # Finally, update list of lists containing cropped cells for each stm
-        # with positive population.
+            # 3.) ABANDON CELLS with negative utility
+            # -----------------------------------------------------------------
+            # find cells that have negative utility and belong to current stm
+            useless_cropped_cells = [
+                cropped_cells[cel] for cel in range(len(cropped_cells))
+
+                if cropped_utils[cel] < 0
+                and cropped_cells[cel] in self.stm_cropped_cells[stm]
+            ]
+            # and release them.
+            for cel in useless_cropped_cells:
+                try:
+                    self.stm_cropped_cells[stm].remove(cel)
+                except ValueError:
+                    print('ERROR: Useless cell gone already')
+                self.cel_is_cropped[cel] = 0
+
+                abandoned += 1
+
+        # Finally, update number of cropped cells for all settlements
         self.stm_cropped_cells_n = [
             len(crp) for crp in self.stm_cropped_cells]
 
@@ -980,16 +959,16 @@ class Core(Parameters):
         return new_settlements
 
     def kill_settlements(self):
+        '''TODO: add docstring'''
 
         killed_stm = 0
-
-        # kill settlements if they have either no crops or no inhabitants:
+        # kill settlements if they have too few inhabitants
         dead_stm_ind = [
             stm for stm in range(self.n_settlements)
 
             if self.stm_population[stm] <= self.min_stm_size
         ]
-
+        # optional: kill settlements if they have no crops
         if self.kill_stm_without_crops:
             dead_stm_ind += [
                 stm for stm in range(self.n_settlements)
@@ -1119,7 +1098,7 @@ class Core(Parameters):
             if len(self.stm_population) > 0:
                 # ag income
                 self.get_influenced_cells()
-                abandoned, sown = self.get_cropped_cells(cel_bca)
+                abandoned, sown = self.update_cropped_cells(cel_bca)
                 self.get_crop_income(cel_bca)
                 # es income
                 self.get_eco_income(cel_es)
