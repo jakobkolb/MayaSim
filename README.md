@@ -39,5 +39,5 @@ Now MayaSim can be imported and run from a python script:
 from mayasim.model.core import Core as MayaSim
 
 model = MayaSim()
-model.run(t_max=350)
+model.run(steps=350)
 ```

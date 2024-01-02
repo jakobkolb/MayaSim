@@ -35,7 +35,7 @@ class Core(Parameters):
     Initialize and run an instance of the model like so:
 
     >>> model = mayasim.model.core.Core()
-    ... model.run(t_max=350)
+    ... model.run(steps=350)
     """
     # pylint: disable=too-many-statements
     def __init__(self,
@@ -1059,21 +1059,21 @@ class Core(Parameters):
         self.stm_real_income_pc.append(0)
         self.stm_migrants.append(0)
 
-    def run(self, t_max: int = 1):
+    def run(self, steps: int = 1):
         """
         Run the model for a given number of steps.
         If no number of steps is given, the model is integrated for one step
 
         Parameters
         ----------
-        t_max: int
+        steps: int
             number of steps to integrate the model
         """
 
         self.init_output()
 
         # initialize progress bar
-        t_range = trange(1, t_max + 1,
+        t_range = trange(1, steps + 1,
                          desc='running MayaSim',
                          postfix={'population': sum(self.stm_population)})
 
