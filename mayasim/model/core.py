@@ -264,10 +264,6 @@ class Core(Parameters):
         Modulates the initial precip dataset with a 24 timestep period.
         Returns a field of rainfall values for each cell.
         If veg_rainfall > 0, cel_cleared_neighs decreases rain.
-
-        TO DO: The original Model increases specialization every time
-        rainfall decreases, assuming that trade gets more important to
-        compensate for agriculture decline
         """
 
         if self.precip_modulation:
