@@ -599,13 +599,8 @@ class Core(Parameters):
             # -----------------------------------------------------------------
             if (ag_pop_density[stm] < self.min_people_per_cropped_cell
                     and self.stm_age[stm] > 5):
-                # NOTE: Some inconsistencies here. Cells are abandoned,
-                # if the 'people per cropped land' is lower than a
-                # threshold for 'people per cropped cells. Then the
-                # number of cells to abandon is calculated as 30/people
-                # per cropped land. Why?! (check the original version!)
+                # number of cells to abandon, not further explained, see #6
                 lost_cells_n = np.ceil(30 / ag_pop_density[stm]).astype('int')
-
                 for n in range(min([lost_cells_n,
                                     self.stm_cropped_cells_n[stm]])):
                     self.stm_cropped_cells[stm].remove(cropped_cells[n])
