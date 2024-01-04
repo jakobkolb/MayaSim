@@ -59,7 +59,7 @@ class Parameters:
     a_npp = 0.14  # weight for net primary productivity
     a_sp = 84.    # for soil productivity
     a_s = 18.     # for slope
-    a_wf = 400.   # water flow
+    a_wf = 4.   # water flow
 
     # WEIGHTS FOR BENEFIT COST ASSESSMENT TO CROP NEW CELL
     max_yield = 1100
@@ -81,7 +81,7 @@ class Parameters:
 
     # WEIGHTS FOR ECOSYSTEM SERVICES
     e_ag = 0.05  # weight for agricultural productivity
-    e_wf = 100.   # water flow
+    e_wf = 1.   # water flow
     e_f = 45.    # forest
     e_r = 0.     # rainfall (not included in current netlogo version)
     e_deg = 0.   # population density (not included in current netlogo version)

@@ -174,8 +174,8 @@ class Core(Parameters):
         self.cel_forest_state[*self.land_cell_index] = 3
 
         # Variables describing total amount of water and water flow
-        self.cel_water = np.zeros(self.map_shape)
-        self.cel_flow = np.zeros(self.map_shape)
+        self.cel_waterlevel = np.zeros(self.map_shape)
+        self.cel_waterflow = np.zeros(self.map_shape)
         self.cel_precip = np.zeros(self.map_shape)
 
         # define relative coordinates of the neighbourhood of a cell
@@ -291,29 +291,15 @@ class Core(Parameters):
 
     def get_waterflow(self):
         """
-        waterflow: takes rain as an argument, uses elev, returns
-        water flow distribution
-        the precip percent parameter that reduces the amount of raindrops that
-        have to be moved.
-        Thereby inceases performance.
-
-        f90waterflow takes as arguments:
-        list of coordinates of land cells (2xN_land)
-        elevation map in (height x width)
-        rain_volume per cell map in (height x width)
-        rain_volume and elevation must have same units: height per cell
-        neighbourhood offsets
-        height and width of map as integers,
-        Number of land cells, N_land
+        Wrapper for the Fortran waterflow-routine: returns water flow
+        distribution on cell grid calculated from precipitation and elevation.
         """
 
-        # convert precipitation from mm to meters
-        # NOTE: I think, this should be 1e-3
-        # to convert from mm to meters though...
-        # but 1e-5 is what they do in the original version.
-        rain_volume = np.nan_to_num(self.cel_precip * 1e-5)
-        # pylint: disable-next=unused-variable
-        err, self.cel_flow, self.cel_water = \
+        # convert precipitation from mm to meters, because
+        # rain_volume and elevation must have same units
+        rain_volume = np.nan_to_num(self.cel_precip * 1e-3)
+        # call Fortran waterflow routine
+        self.cel_waterflow, self.cel_waterlevel = \
             f90routines.f90waterflow(
                 self.land_cell_index,
                 self.cel_elev,
@@ -323,7 +309,8 @@ class Core(Parameters):
                 self.map_shape[1],
                 self.n_land_cells)
 
-        return self.cel_water, self.cel_flow
+        # only return waterflow, but keep waterlevel as a state attribute
+        return self.cel_waterflow
 
     def evolve_forest(self, cel_npp: NDArray):
         """
@@ -1078,9 +1065,7 @@ class Core(Parameters):
             self.evolve_forest(cel_npp)
 
             # water flow
-            # NOTE: this is curious, only waterflow
-            # is used, water level is abandoned.
-            cel_wf = self.get_waterflow()[1]
+            cel_wf = self.get_waterflow()
             # agricultural productivity
             cel_ag = self.get_ag(cel_npp, cel_wf)
             # ecosystem services

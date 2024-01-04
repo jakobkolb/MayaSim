@@ -178,13 +178,12 @@ MODULE f90routines
 
 
       SUBROUTINE f90waterflow(land_list, elevation, precipitation, neighbours, max_x, &
-                      max_y, N_land, err, flow, water)
+                      max_y, N_land, flow, water)
 
               ! N_land: number of land cells
               ! land_list: coordinates of land cells (x,y)
               ! map_hight, map_width: map dimensions in number of cells
               ! precipitation: square map with precipitation value for each cell
-              ! 
 
               INTEGER, INTENT(in)                               :: N_land
               INTEGER, DIMENSION(2,N_land), INTENT(in)          :: land_list
@@ -193,7 +192,6 @@ MODULE f90routines
               REAL, DIMENSION(max_x,max_y), INTENT(in)          :: precipitation, elevation
               REAL, DIMENSION(max_x,max_y), INTENT(out)         :: flow, water
               INTEGER, DIMENSION(2,9), INTENT(in)               :: neighbours
-              INTEGER, INTENT(out)                              :: err
 
               REAL, DIMENSION(max_x,max_y)                      :: Z
               REAL, DIMENSION(N_land)                           :: drop_volume
@@ -203,8 +201,6 @@ MODULE f90routines
               REAL                                              :: water_elev_new, water_elev_old
               INTEGER                                           :: i, j, k, x, y, x_tmp, y_tmp, x_new, y_new, step
 
-              err = max_x
-
               !set flow to zero at begin of calculation
               flow = 0
               !set water to drop_volumes on cells
@@ -212,12 +208,12 @@ MODULE f90routines
 
               !Initialize drop coordinates and drop volumes in a list
               DO i = 1,N_land
-                !array indices start with 1 in fortran and 0 in python!!
+                !array indices start with 1 in fortran and 0 in python
                 drop_coordinates(1,i) = land_list(1,i) + 1
                 drop_coordinates(2,i) = land_list(2,i) + 1
                 drop_volume(i) = precipitation(land_list(1,i)+1,land_list(2,i)+1)
               END DO
-              
+
               DO step = 1,100
                 !Build water level map from elevation + drop volume
                 Z = water + elevation
