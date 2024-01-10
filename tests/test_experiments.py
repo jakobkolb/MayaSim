@@ -1,6 +1,6 @@
 # test functions for experiments
 
-from experiments import \
+from experiments.jkolb import \
     X1_default_setup as X1, \
     X2_scan_r_es_and_r_agg as X2, \
     X3_trade as X3, \
