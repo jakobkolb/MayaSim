@@ -37,7 +37,8 @@ setup(
             'pylint'
         ],
         'eval': [
-            'jupyter'
+            'jupyter',
+            'tables'
         ]
     },
     # see http://stackoverflow.com/questions/15869473/what-is-the-advantage-
