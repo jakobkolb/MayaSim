@@ -171,7 +171,8 @@ class Core(Parameters):
         self.cel_cleared_neighs = np.zeros(self.map_shape, dtype=int)
         # forest states: 3=climax forest, 2=secondary regrowth, 1=cleared land
         # set all land cells to 'climax forest'
-        self.cel_forest_state[*self.land_cell_index] = 3
+        self.cel_forest_state[self.land_cell_index[0],
+                              self.land_cell_index[1]] = 3
 
         # Variables describing total amount of water and water flow
         self.cel_waterlevel = np.zeros(self.map_shape)
@@ -363,7 +364,8 @@ class Core(Parameters):
             self.cel_forest_state[cel_reg_s2 & cel_s3_neighbors] = 3
 
             # Finally, increase memory of all forest cells by one
-            self.cel_forest_memory[*self.land_cell_index] += 1
+            self.cel_forest_memory[self.land_cell_index[0],
+                                   self.land_cell_index[1]] += 1
 
         # calculate cleared land neighbours for output:
         if self.veg_rainfall > 0:
@@ -372,8 +374,12 @@ class Core(Parameters):
                 ndimage.convolve(cel_s1, neigh_kernel, mode='constant', cval=0)
 
         # make sure all land cells have forest states 1-3
-        assert not np.any(self.cel_forest_state[*self.land_cell_index]
-                          < 1), 'forest state is smaller than 1 somewhere'
+        assert not np.any(
+            self.cel_forest_state[
+                self.land_cell_index[0],
+                self.land_cell_index[1]
+            ] < 1
+        ), 'forest state is smaller than 1 somewhere'
 
     def get_npp(self):
         """
@@ -509,7 +515,7 @@ class Core(Parameters):
             pop / (cropped_n * self.area) if cropped_n > 0 else 0.
 
             for pop, cropped_n in zip(
-                self.stm_population, self.stm_cropped_cells_n, strict=True)
+                self.stm_population, self.stm_cropped_cells_n)
         ]
 
         # cel_is_cropped is a mask of all cropped cells of all settlements
@@ -530,7 +536,7 @@ class Core(Parameters):
                 + (self.width_cell * (x - infd_index[1]))**2)
             # EQUATION ########################################################
             utility = (
-                cel_bca[*infd_index] - self.estab_cost
+                cel_bca[infd_index[0], infd_index[1]] - self.estab_cost
                 - self.ag_travel_cost * distance / np.sqrt(
                     self.stm_population[stm])
             ).tolist()
@@ -653,8 +659,7 @@ class Core(Parameters):
             int((1. + b_rate - d_rate) * pop)
 
             for b_rate, d_rate, pop in zip(
-                self.stm_birth_rate, self.stm_death_rate, self.stm_population,
-                strict=True)
+                self.stm_birth_rate, self.stm_death_rate, self.stm_population)
         ]
 
         self.stm_population = [
@@ -676,7 +681,7 @@ class Core(Parameters):
         self.stm_out_mig = [
             int(m_rate * pop)
             for m_rate, pop in zip(
-                self.stm_mig_rate, self.stm_population, strict=True)
+                self.stm_mig_rate, self.stm_population)
         ]
 
         self.stm_out_mig = [
@@ -694,7 +699,7 @@ class Core(Parameters):
                 (y - infd_index[0])**2 + (x - infd_index[1])**2))
 
             # EQUATION ########################################################
-            self.cel_pop_gradient[*infd_index] += \
+            self.cel_pop_gradient[infd_index[0], infd_index[1]] += \
                 self.stm_population[stm] / (300 * (1 + distance))
             # EQUATION ########################################################
             self.cel_pop_gradient[self.cel_pop_gradient > 15] = 15
@@ -854,13 +859,15 @@ class Core(Parameters):
             for stm, infd_cells in enumerate(self.stm_influenced_cells):
                 infd_index = np.array(infd_cells).T
                 self.stm_eco_benefit[stm] = \
-                    self.r_es_mean * np.nanmean(cel_es[*infd_index])
+                    self.r_es_mean * np.nanmean(cel_es[infd_index[0],
+                                                       infd_index[1]])
 
         elif self.eco_income_mode == "sum":
             for stm, infd_cells in enumerate(self.stm_influenced_cells):
                 infd_index = np.array(infd_cells).T
                 self.stm_eco_benefit[stm] = \
-                    self.r_es_sum * np.nansum(cel_es[*infd_index])
+                    self.r_es_sum * np.nansum(cel_es[infd_index[0],
+                                                     infd_index[1]])
         # ##EQUATION###########################################################
 
     def get_trade_income(self):
@@ -869,7 +876,7 @@ class Core(Parameters):
             1. / 30. * (1 + comp_size / centrality)**0.9
 
             for comp_size, centrality in zip(
-                self.stm_comp_size, self.stm_centrality, strict=True)
+                self.stm_comp_size, self.stm_centrality)
         ]
 
         self.stm_trade_income = [
@@ -878,7 +885,7 @@ class Core(Parameters):
             else self.r_trade * trade_income
 
             for trade_income, degree in zip(
-                self.stm_trade_income, self.stm_degree, strict=True)
+                self.stm_trade_income, self.stm_degree)
         ]
         # ##EQUATION###########################################################
 
@@ -892,7 +899,7 @@ class Core(Parameters):
             for crop_yield, eco_benefit, trade_income, pop in zip(
                 self.stm_crop_yield, self.stm_eco_benefit,
                 self.stm_trade_income, self.stm_population,
-                strict=True)
+            )
         ]
 
     def migration(self, cel_es):
