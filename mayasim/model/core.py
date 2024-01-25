@@ -1060,7 +1060,8 @@ class Core(Parameters):
         # initialize progress bar
         t_range = trange(1, steps + 1,
                          desc='running MayaSim',
-                         postfix={'population': sum(self.stm_population)})
+                         postfix={'population': sum(self.stm_population)},
+                         disable=os.environ.get("DISABLE_TQDM", False))
 
         for timestep in t_range:
             # evolve subselfs

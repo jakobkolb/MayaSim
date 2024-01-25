@@ -261,6 +261,11 @@ def run_experiment(test, mode):
                         f'output/{test_folder}{experiment_folder}{raw}'
         save_path_res = '/Users/Fritz/Desktop/Thesis/MayaSim/' \
                         f'output/{test_folder}{experiment_folder}{res}'
+    elif getpass.getuser() == 'fritzku':
+        save_path_raw = '/p/tmp/fritzku/MayaSim/' \
+                        f'output/{test_folder}{experiment_folder}{raw}'
+        save_path_res = '/p/tmp/fritzku/MayaSim/' \
+                        f'output/{test_folder}{experiment_folder}{res}'
     else:
         save_path_raw = f'./output/{test_folder}{experiment_folder}{raw}'
         save_path_res = f'./output/{test_folder}{experiment_folder}{res}'
@@ -273,14 +278,14 @@ def run_experiment(test, mode):
         r_trade = [6000, 7000]
         r_es = [0.03, 0.08]
     else:
-        r_trade = [round(x, 5) for x in np.arange(5000, 9400, 100)]
-        r_es = [round(x, 4) for x in np.arange(0.02, 0.13, 0.0025)]
+        r_trade = [round(x, 5) for x in np.arange(5000, 9400, 800)]
+        r_es = [round(x, 4) for x in np.arange(0.02, 0.13, 0.02)]
     print(f'r_trade: {r_trade}')
     print(f'r_es: {r_es}')
     param_combs = list(it.product(r_trade, r_es, [test]))
 
     STEPS = 2000 if not test else 20
-    sample_size = 31 if not test else 4
+    sample_size = 10 if not test else 4
 
     print(f'parameter combinations: {len(param_combs)}, samples: {sample_size}')
 
