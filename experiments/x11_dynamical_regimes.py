@@ -20,7 +20,6 @@ analysis of frequency of oscillations from the trajectories."
 import argparse
 import getpass
 import itertools as it
-import os
 
 import pickle as cp
 import numpy as np
@@ -29,7 +28,6 @@ from pymofa.experiment_handling import experiment_handling as eh
 
 from mayasim.model.core import Core as MayaSim
 from mayasim.model.parameters import Parameters
-from mayasim.visuals.custom_visuals import MapPlot
 
 STEPS = 1500
 
@@ -176,7 +174,6 @@ def run_function(r_bca=0.2,
     """
 
     # initialize the Model
-
     m = MayaSim(n, output_path=filename)
     m.output_geographic_data = False
     m.output_settlement_data = False
@@ -189,10 +186,9 @@ def run_function(r_bca=0.2,
     m.r_trade = r_trade
     m.kill_stm_without_crops = kill_cropless
 
-    m.precipitation_modulation = False
+    m.precip_modulation = False
 
     # store initial conditions and Parameters
-
     res = {
         "initials":
         pd.DataFrame({
@@ -221,7 +217,7 @@ def run_function(r_bca=0.2,
     return 1
 
 
-def run_experiment(test, mode):
+def run_experiment(test, mode, job_id, max_id):
     """
     Take arv input variables and run sub_experiment accordingly.
     This happens in five steps:
@@ -278,14 +274,14 @@ def run_experiment(test, mode):
         r_trade = [6000, 7000]
         r_es = [0.03, 0.08]
     else:
-        r_trade = [round(x, 5) for x in np.arange(5000, 9400, 800)]
-        r_es = [round(x, 4) for x in np.arange(0.02, 0.13, 0.02)]
+        r_trade = np.arange(4000, 11200, 200).tolist()
+        r_es = np.arange(0.005, 0.185, 0.005).round(decimals=3).tolist()
     print(f'r_trade: {r_trade}')
     print(f'r_es: {r_es}')
     param_combs = list(it.product(r_trade, r_es, [test]))
 
     STEPS = 2000 if not test else 20
-    sample_size = 10 if not test else 4
+    sample_size = 32 if not test else 4
 
     print(f'parameter combinations: {len(param_combs)}, samples: {sample_size}')
 
@@ -299,8 +295,27 @@ def run_experiment(test, mode):
 
     # Run computation and post processing.
 
+    def chunk_arr(i, array, i_max):
+        """
+        split array in equally sized (except for the last
+        one which is shorter) chunks and return the i-th
+        """
+        a_len = len(array)
+        di = int(np.ceil(a_len / i_max)) if i_max > 0 else 1
+        i1 = i * di
+        i2 = (i + 1) * di
+        # print(i1, i2, di, a_len)
+
+        if i < i_max:
+            return array[i1:i2]
+        elif i == i_max:
+            return array[i1:]
+        else:
+            return 0
+
     handle = eh(sample_size=sample_size,
-                parameter_combinations=param_combs,
+                parameter_combinations=chunk_arr(
+                    job_id, param_combs, max_id),
                 index=index,
                 path_raw=save_path_raw,
                 path_res=save_path_res,
@@ -338,7 +353,17 @@ if __name__ == '__main__':
                     help="""switch to set mode: 0 - computation,
     1 - calculate means, 2 - collect trajectories to single file""",
                     default=0,
-                    choices=[0, 1, 2, 3])
+                    choices=[0, 1, 2])
+    ap.add_argument("-i",
+                    "--job_id",
+                    type=int,
+                    help="job id in case of array job",
+                    default=0)
+    ap.add_argument("-N",
+                    "--max_id",
+                    type=int,
+                    help="max job id in case of array job",
+                    default=0)
     args = vars(ap.parse_args())
 
     # run experiment
