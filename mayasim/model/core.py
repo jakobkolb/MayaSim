@@ -934,6 +934,7 @@ class Core(Parameters):
                 # if not, spawn settlement
                 if np.sum(neighbours) == 0:
                     self.spawn_settlement(new_y, new_x, mig_pop)
+                    positions = np.append(positions, [[new_y],[new_x]], axis=1)
                     new_settlements += 1
 
         return new_settlements
