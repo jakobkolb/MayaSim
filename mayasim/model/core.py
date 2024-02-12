@@ -910,7 +910,6 @@ class Core(Parameters):
         positions = np.array(self.stm_positions).T
 
         for stm, (y, x) in enumerate(self.stm_positions):
-
             if (self.stm_out_mig[stm] > 400 and len(uninfd_index[0]) > 0
                     and np.random.rand() <= 0.5):
 
@@ -1200,7 +1199,7 @@ class Core(Parameters):
             Timestep number to append to save file path
 
         """
-        colums = [
+        columns = [
             'population', 'real income', 'ag income', 'es income',
             'trade income', 'position', 'out migration',
             'degree'
@@ -1213,7 +1212,7 @@ class Core(Parameters):
 
         data = list(map(list, zip(*data)))
 
-        data_frame = pandas.DataFrame(columns=colums, data=data)
+        data_frame = pandas.DataFrame(columns=columns, data=data)
 
         with open(self.settlement_output_path(timestep), 'wb') as f:
             pkl.dump(data_frame, f)
@@ -1236,10 +1235,8 @@ class Core(Parameters):
             Number of cells that was newly cropped in the previous time step
         """
 
-        tmpforest = self.cel_forest_state.copy()
-        tmpforest[np.isnan(self.cel_elev)] = 0
         data = {
-            'forest': tmpforest,
+            'forest': self.cel_forest_state,
             'waterflow': cel_wf,
             'cells in influence': self.stm_influenced_cells,
             'number of cells in influence': self.stm_influenced_cells_n,
@@ -1287,11 +1284,8 @@ class Core(Parameters):
         # args = [cel_npp, cel_wf, cel_ag, cel_es, cel_bca]
 
         total_population = sum(self.stm_population)
-        try:
-            max_population = np.nanmax(self.stm_population)
-        except:  # pylint: disable=bare-except
-            max_population = float('nan')
-        total_migrangs = sum(self.stm_migrants)
+        max_population = max(self.stm_population)
+        total_migrants = sum(self.stm_migrants)
         total_settlements = len(self.stm_population)
         total_trade_links = sum(self.stm_degree) / 2
         income_agriculture = sum(self.stm_crop_yield)
@@ -1312,7 +1306,7 @@ class Core(Parameters):
         total_influenced_cells = sum(self.stm_influenced_cells_n)
 
         self.aggregates.append([
-            time, total_population, max_population, total_migrangs,
+            time, total_population, max_population, total_migrants,
             total_settlements, total_cropped_cells,
             total_influenced_cells, total_trade_links, mean_cluster_size,
             max_cluster_size, new_settlements, killed_settlements, built, lost,
