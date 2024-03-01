@@ -34,8 +34,8 @@ class Parameters:
 
     # timing of drought events as list of list of
     # start and end dates
-    drought_times = [[0, 2], [150, 170]]
-    # decrease in rainfall in percent
+    drought_times = []  # e.g. [[0, 2], [150, 170]]
+    # percentage of rainfall decrease
     drought_severity = 10
 
     # FOREST PARAMETERS
