@@ -1,6 +1,7 @@
 import glob
 import os
-from subprocess import call
+from subprocess import run
+from tqdm.auto import trange
 
 import matplotlib as mpl
 # Force matplotlib to not use any Xwindows backend
@@ -11,13 +12,13 @@ import pandas as pd
 from matplotlib.colors import ListedColormap, Normalize
 
 
-class MapPlot(object):
+class MapPlot():
     """Plot simulation state on map."""
 
     def __init__(self,
-                 t_max=None,
-                 output_location="./pictures/",
-                 input_location=None):
+                 t_max,
+                 output_location,
+                 input_location):
         """
         Initialize the MapPlot class with custom parameters
         
@@ -31,7 +32,7 @@ class MapPlot(object):
             input location for simulation data to plot
         """
 
-        self.trj = pd.read_pickle(input_location + '.pkl')['trajectory']
+        self.trj = pd.read_pickle(input_location + '.pkl')['aggregates']
 
         self.t_max = t_max
         if not input_location.endswith('/'):
@@ -41,6 +42,10 @@ class MapPlot(object):
             output_location += '/'
         self.output_location = output_location
 
+        if not os.path.isdir(self.output_location):
+            os.makedirs(self.output_location)
+            os.makedirs(self.output_location + 'frames/')
+
         return
 
     def mplot(self):
@@ -48,10 +53,7 @@ class MapPlot(object):
 
         fig = plt.figure(figsize=(16, 9))
 
-
-        for t in range(1, self.t_max+1):
-
-            print(t, self.t_max)
+        for t in trange(1, self.t_max+1):
 
             axa = plt.subplot2grid((2, 3), (0, 2))
             axb = plt.subplot2grid((2, 3), (1, 2))
@@ -81,7 +83,6 @@ class MapPlot(object):
             axa.set_xlabel('climax forest cells')
             axa.set_ylabel('total population')
 
-
             ln2 = axa2.plot(time, agg_income, color='black', label='income from agriculture')
             ln3 = axa2.plot(time, ess_income, color='green', label='income from ecosystem')
             ln4 = axa2.plot(time, trade_income, color='red', label='income from trade')
@@ -90,12 +91,13 @@ class MapPlot(object):
             labs = [l.get_label() for l in lns]
             axb.legend(lns, labs, loc=0)
 
-            forest_data = self.trj[['total_agriculture_cells',
+            forest_data = self.trj[['total_cropped_cells',
                                     'forest_state_1_cells',
                                     'forest_state_2_cells',
                                     'forest_state_3_cells']]
             # print('before: \n', forest_data['forest_state_1_cells'])
-            forest_data['forest_state_1_cells'] = forest_data['forest_state_1_cells'].sub(forest_data['total_agriculture_cells'])
+            forest_data.loc[:,'forest_state_1_cells'] = \
+                forest_data.loc[:,'forest_state_1_cells'].sub(forest_data.loc[:,'total_cropped_cells'])
             # print('after: \n', forest_data['forest_state_1_cells'])
             forest_data[0:t].plot.area(ax=axb, stacked=True, color=['black', '#FF9900', '#66FF33', '#336600'])
             axb.set_xlim([0, self.t_max])
@@ -105,7 +107,7 @@ class MapPlot(object):
             location = self.input_location + 'geographic_data_{0:03d}.pkl'.format(t)
 
 
-            data = np.load(location)
+            data = np.load(location, allow_pickle=True)
 
             forest = data['forest']
 
@@ -119,10 +121,10 @@ class MapPlot(object):
             cropped_cells = data['cropped cells']
             influenced_cells = data['cells in influence']
 
-            for city in range(len(data['x positions'])):
-                if len(cropped_cells[city]) > 0:
-                    influenced[influenced_cells[city][0], influenced_cells[city][1]] = 1
-                    cropped[cropped_cells[city][0], cropped_cells[city][1]] = 1
+            for city, crp in enumerate(cropped_cells):
+                if len(crp) > 0:
+                    influenced[np.array(influenced_cells[city]).T[0], np.array(influenced_cells[city]).T[1]] = 1
+                    cropped[np.array(cropped_cells[city]).T[0], np.array(cropped_cells[city]).T[1]] = 1
 
             forest[cropped == 1] = 4
 
@@ -143,18 +145,18 @@ class MapPlot(object):
 
             # plot trade network from adjacency matrix and settlement positions
 
-            for i, xi in enumerate(zip(data['y positions'], data['x positions'])):
-                for j, xj in enumerate(zip(data['y positions'], data['x positions'])):
+            for i, xi in enumerate(data['position']):
+                for j, xj in enumerate(data['position']):
                     if data['adjacency'][i, j] == 1:
-                        plt.plot([xi[0], xj[0]], [xi[1], xj[1]], linewidth=0.5, color='black', zorder=1)
+                        plt.plot([xi[1], xj[1]], [xi[0], xj[0]], linewidth=0.5, color='black', zorder=1)
 
             # plot settlements with population as color and rank as size
 
-            max_population = self.trj['max settlement population'].max()
+            max_population = self.trj['max_settlement_population'].max()
 
             cmap = plt.get_cmap('OrRd')
-            sct = plt.scatter(data['y positions'],
-                              data['x positions'],
+            sct = plt.scatter(np.array(data['position']).T[1],
+                              np.array(data['position']).T[0],
                               [4 * (x + 1) for x in data['rank']],
                               c=data['population'],
                               cmap=plt.get_cmap('OrRd'),
@@ -166,20 +168,22 @@ class MapPlot(object):
             ax.set_xlim([0, shape[1]])
 
             fig.tight_layout()
-            ol = self.output_location + 'frame_{0:03d}'.format(t)
+            ol = self.output_location + f'frames/frame_{t:03d}'
             fig.savefig(ol, dpi=150)
             fig.clear()
         try:
-            self.moviefy()
+           self.moviefy()
         finally:
-            pass
+           pass
 
-    def moviefy(self, rmold=False, namelist=['image_']):
+    def moviefy(self, rmold=False, namelist=['frame_']):
         # type: (str, str) -> object
+
+        print('moviefying map plots ...')
 
         framerate = 8
         output_folder = self.output_location
-        input_folder = self.output_location
+        input_folder = self.output_location + 'frames/'
 
         input_folder = '/' + input_folder.strip('/') + '/'
         output_folder = '/' + output_folder.strip('/') + '/'
@@ -193,8 +197,8 @@ class MapPlot(object):
         for name in namelist:
             input_string = input_folder + name + "%03d.png"
             del_string = input_folder + name + "*.png"
-            output_string = output_folder + name.strip('_') + '.mp4'
-            call(["ffmpeg", "-loglevel", "panic", "-y", "-hide_banner", "-r", repr(framerate), "-i", input_string, output_string])
+            output_string = output_folder + 'movie.mp4'
+            run(["ffmpeg", "-loglevel", "panic", "-y", "-hide_banner", "-r", repr(framerate), "-i", input_string, output_string])
             if rmold:
                 for fl in glob.glob(del_string):
                     os.remove(fl)
