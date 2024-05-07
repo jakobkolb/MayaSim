@@ -145,18 +145,12 @@ class Core(Parameters):
         self.height, self.width = 914., 840.  # height and width in km
         self.height_cell = self.height / self.map_shape[0]
         self.width_cell = self.width / self.map_shape[1]
+        self.area = self.height_cell * self.width_cell
 
         # find land cells
         self.land_cell_index = np.asarray(np.where(~np.isnan(self.cel_elev)))
         self.land_cells = list(zip(*self.land_cell_index))
         self.n_land_cells = len(self.land_cells)
-
-        # lengh unit - total map is about 500 km wide
-        # NOTE: this seems questionable, where does this value come from?
-        self.area = 516484. / self.n_land_cells
-
-        # initialize soil degradation and population
-        # gradient (influencing the forest)
 
         # *********************************************************************
         # INITIALIZE ECOSYSTEM
@@ -365,15 +359,11 @@ class Core(Parameters):
             # Finally, increase memory of all forest cells by one
             self.cel_forest_memory[*self.land_cell_index] += 1
 
-        # calculate cleared land neighbours for output:
+        # calculate cleared land neighbours for veg_rainfall:
         if self.veg_rainfall > 0:
             cel_s1 = (self.cel_forest_state == 1).astype('int')
             self.cel_cleared_neighs = \
                 ndimage.convolve(cel_s1, neigh_kernel, mode='constant', cval=0)
-
-        # make sure all land cells have forest states 1-3
-        assert not np.any(self.cel_forest_state[*self.land_cell_index]
-                          < 1), 'forest state is smaller than 1 somewhere'
 
     def get_npp(self):
         """
@@ -394,7 +384,7 @@ class Core(Parameters):
         """
         agricultural productivity is calculated via a linear additive
         model from net primary productivity, soil productivity, slope,
-        waterflow and soil degradation of each patch.
+        waterflow and soil degradation of each cell.
         """
         # EQUATION ############################################################
         return (self.a_npp * cel_npp
@@ -406,14 +396,12 @@ class Core(Parameters):
 
     def get_ecoserv(self, cel_ag: NDArray, cel_wf: NDArray):
         """
-        Ecosystem Services are calculated via a linear
-        additive model from agricultural productivity (cel_ag),
-        waterflow through the cell (cel_wf) and forest
-        state on the cell (cel_forest_state) in [1,3],
-        The recent version of mayasim limits value of
-        ecosystem services to 1 < ecoserv < 250, it also
-        proposes to include population density
-        (cel_pop_gradient) and precipitation (cel_precip)
+        Ecosystem services are calculated via a linear additive model from
+        agricultural productivity (cel_ag), waterflow (cel_wf), forest state
+        (cel_forest_state), precipitation (cel_precip) and population density
+        (cel_pop_gradient). Note that default weights for the latter two are
+        set to 0. as they are left out in MayaSim v1.3.0.
+        self.better_ess toggles another way of calculation proposed by J. Kolb.
         """
         # EQUATION ############################################################
 
@@ -606,10 +594,7 @@ class Core(Parameters):
             ]
             # and release them.
             for cel in useless_cropped_cells:
-                try:
-                    self.stm_cropped_cells[stm].remove(cel)
-                except ValueError:
-                    print('ERROR: Useless cell gone already')
+                self.stm_cropped_cells[stm].remove(cel)
                 self.cel_is_cropped[cel] = 0
 
                 abandoned += 1
@@ -621,8 +606,9 @@ class Core(Parameters):
         return abandoned, sown
 
     def get_pop_mig(self):
-        # gives population and out-migration
-        # print("number of settlements", len(self.stm_population))
+        """
+        gives population and out-migration
+        """
 
         # death rate correlates inversely with real income per capita
         death_rate_diff = self.max_death_rate - self.min_death_rate
@@ -636,7 +622,7 @@ class Core(Parameters):
             self.stm_death_rate, self.min_death_rate, self.max_death_rate))
 
         # if population control,
-        # birth rate negatively correlates with population size
+        # birth rate negatively correlates with settlement population
 
         if self.population_control:
             birth_rate_diff = self.max_birth_rate - self.min_birth_rate
