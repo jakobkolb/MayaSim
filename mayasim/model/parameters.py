@@ -21,7 +21,7 @@ class Parameters:
     # RAINFALL PARAMETERS
 
     veg_rainfall = 0.               # 0. (i.e. disabled)
-    precip_modulation = True
+    precip_modulation = False       # True
     # multiplier for precipitation according to climate cycle
     precip_variation = np.array([-0.06, -0.12, -0.18,
                                         -0.12, -0.06, 0., 0.06, 0.])
