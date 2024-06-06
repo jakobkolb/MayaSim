@@ -52,9 +52,6 @@ def run_function(t_1, t_2, t_3, filename):
     m.thresh_rank_2 = t_2
     m.thresh_rank_3 = t_3
 
-    m.better_ess = True
-    m.precip_modulation = False
-
     # m.output_geographic_data = False
 
     # store initial conditions and Parameters
