@@ -79,7 +79,7 @@ class Parameters:
     e_ag = 0.05  # 0.06 - agricultural productivity
     e_wf = 1.    # 40.  - water flow, NOTE: different units?
     e_f = 45.    # 45.  - forest
-    e_r = 0.     # 0.   - (i.e. excluded) rainfall 
+    e_r = 0.     # 0.   - (i.e. excluded) rainfall
     e_deg = 0.   # 0.   - (i.e. excluded) population density
 
     # SWITCH FOR ECOSYSTEM SERVICES CALCULATION
