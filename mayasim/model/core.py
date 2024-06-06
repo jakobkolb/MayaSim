@@ -1041,17 +1041,26 @@ class Core(Parameters):
                          desc='running MayaSim',
                          postfix={'population': sum(self.stm_population)})
 
+        # if precipitation is not varied, some recalculations can be skipped
+        constant_precipitation = (not self.precip_modulation
+                                  and self.veg_rainfall == 0.
+                                  and not self.drought_times)
+
         for timestep in t_range:
             # evolve subselfs
 
             # ecosystem
-            self.update_precipitation(timestep)
-            # net primary productivity
-            cel_npp = self.get_npp()
+            if not (constant_precipitation and timestep > 1):
+                # precipitation
+                self.update_precipitation(timestep)
+                # net primary productivity
+                cel_npp = self.get_npp()
+            # forest automaton
             self.evolve_forest(cel_npp)
 
             # water flow
-            cel_wf = self.get_waterflow()
+            if not (constant_precipitation and timestep > 1):
+                cel_wf = self.get_waterflow()
             # agricultural productivity
             cel_ag = self.get_ag(cel_npp, cel_wf)
             # ecosystem services
