@@ -83,7 +83,7 @@ class Parameters:
     e_deg = 0.   # 0.   - (i.e. excluded) population density
 
     # SWITCH FOR ECOSYSTEM SERVICES CALCULATION
-    better_ess = False
+    better_ess = True    # False 
 
     # *************************************************************************
     # SOCIO-ECONOMY
