@@ -46,7 +46,7 @@ class Parameters:
     # Threshold for forest regeneration 2 -> 3
     state_change_s3 = 100.  # 100.
     # number of state 3 neighbors required for 2 -> 3 regeneration
-    min_s3_neighbours = 2   # 2.
+    min_s3_neighbours = 2   # 2
 
     # *************************************************************************
     # AGRICULTURE
@@ -69,7 +69,7 @@ class Parameters:
     max_people_per_cropped_cell = 125.  # 125.
 
     # KILL SETTLEMENTS WITHOUT POPULATION ONLY OR ALSO WITHOUT CROPS
-    kill_stm_without_crops = False
+    kill_stm_without_crops = False      # True
 
     # PARAMETERS FOR SOIL DEGRADATION:
     deg_rate = 5.0  # 5.0 - degradation rate for cropped cells
@@ -83,7 +83,7 @@ class Parameters:
     e_deg = 0.   # 0.   - (i.e. excluded) population density
 
     # SWITCH FOR ECOSYSTEM SERVICES CALCULATION
-    better_ess = True    # False 
+    better_ess = True    # False
 
     # *************************************************************************
     # SOCIO-ECONOMY
