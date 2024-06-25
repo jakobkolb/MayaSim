@@ -96,7 +96,7 @@ class Parameters:
     # 'sum' weights have been calibrated from parameter scans to yield
     # realistic peak population levels.
     r_bca_mean = 1.1  # 1.1   - weight ag income for mean calculation
-    r_bca_sum = 0.25  # --    - weight ag income for sum calculation
+    r_bca_sum = 0.2   # --    - weight ag income for sum calculation
     r_es_mean = 10.   # 10.   - weight es income for mean calculation
     r_es_sum = .05    # --    - weight es income for sum calculation
     r_trade = 6000.   # 6000. - weight trade income
