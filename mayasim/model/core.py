@@ -1284,7 +1284,7 @@ class Core(Parameters):
         # args = [cel_npp, cel_wf, cel_ag, cel_es, cel_bca]
 
         total_population = sum(self.stm_population)
-        max_population = max(self.stm_population)
+        max_population = max(self.stm_population, default=0)
         total_migrants = sum(self.stm_migrants)
         total_settlements = len(self.stm_population)
         total_trade_links = sum(self.stm_degree) / 2
