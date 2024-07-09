@@ -11,7 +11,7 @@ from setuptools import setup
 
 setup(
     name='mayasim',
-    version='0.0.1',
+    version='1.3.0dev1',
     description='to be added',
     url='to be added',
     author='Fritz Kuehlein',
@@ -20,14 +20,15 @@ setup(
     packages=['mayasim'],
     include_package_data=True,
     install_requires=[
-        'numpy>=1.26.0',
+        'numpy>=1.26.0, < 2.0'
         'pandas>=2.0.0',
-        'pymofa @ git+https://github.com/fkuehlein/pymofa@results_pkl',
         'networkx',
-        'pickleshare',
         'scipy',
         'matplotlib',
         'tqdm'
+        'pymofa @ git+https://github.com/fkuehlein/pymofa@results_pkl',
+        'mpi4py',
+        'tables'
     ],
     extras_require={
         'test': [
