@@ -9,12 +9,9 @@ with the default parameters.
 # pylint: disable=invalid-name
 # pylint: enable=invalid-name
 
-import sys
 import getpass
 
-import itertools as it
 import pickle as pkl
-import numpy as np
 import pandas as pd
 
 from pymofa.experiment_handling import experiment_handling as eh
