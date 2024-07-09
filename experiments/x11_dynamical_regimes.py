@@ -3,6 +3,7 @@ Author: Fritz Kühlein
 
 Reproduce Jakob Kolb's regime classification wrt. parameters r_trade and r_es.
 
+Original Docstring:
 "Experiment to generate trajectories for different possible of income
 from ecosystem and trade. These trajectories will then be used to
 analyze the bifurcation parameter of the model. Also, they can be
@@ -21,7 +22,7 @@ import argparse
 import getpass
 import itertools as it
 
-import pickle as cp
+import pickle as pkl
 import numpy as np
 import pandas as pd
 from pymofa.experiment_handling import experiment_handling as eh
@@ -174,9 +175,7 @@ def run_function(r_bca=0.2,
     """
 
     # initialize the Model
-    m = MayaSim(n, output_path=filename)
-    m.output_geographic_data = False
-    m.output_settlement_data = False
+    m = MayaSim(n)
 
     m.population_control = population_control
     m.crop_income_mode = crop_income_mode
@@ -211,7 +210,7 @@ def run_function(r_bca=0.2,
 
     # and save to file
     with open(filename, 'wb') as dumpfile:
-        cp.dump(res, dumpfile)
+        pkl.dump(res, dumpfile)
 
     # pymofa needs return value
     return 1

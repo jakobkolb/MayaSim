@@ -1,16 +1,18 @@
 #!/bin/bash
 #SBATCH --qos=short
-#SBATCH --job-name=x11_mean
+#SBATCH --job-name=x11_test
 #SBATCH --account=copan
-#SBATCH --output=x11_mean_%j.out
-#SBATCH --error=x11_mean_%j.err
+#SBATCH --output=x11_test_%A_%a.out
+#SBATCH --error=x11_test_%A_%a.err
 #SBATCH --chdir=/p/tmp/fritzku/MayaSim
-#SBATCH --ntasks=64
-#SBATCH --time=02:00:00
+#SBATCH --ntasks=8
+#SBATCH --array=0-4
+#SBATCH --time=05:30:00
 
 module load intel/oneAPI/2024.0.0
 module load anaconda/2023.09
 export OMP_NUM_THREADS=1
+export DISABLE_TQDM=True # disable progress bar output to stderr
 
 source activate mayasim
 
@@ -21,4 +23,4 @@ echo "$SLURM_NTASKS tasks"
 echo "------------------------------------------------------------"
 
 cd ~/MayaSim/experiments/
-mpirun -n $SLURM_NTASKS python x11_dynamical_regimes.py --mode 1
+mpirun -n $SLURM_NTASKS python x11_dynamical_regimes.py --testing --mode 0 --job_id $SLURM_ARRAY_TASK_ID --max_id $SLURM_ARRAY_TASK_MAX
