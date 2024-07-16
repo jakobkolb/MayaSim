@@ -24,13 +24,13 @@ import itertools as it
 
 import pickle as pkl
 import numpy as np
-import pandas as pd
+import pandas as pd # needs pytables installed for pd.HDFStore()
 from pymofa.experiment_handling import experiment_handling as eh
 
 from mayasim.model.core import Core as MayaSim
 from mayasim.model.parameters import Parameters
 
-STEPS = 1500
+STEPS = None
 
 def ens_mean(fnames):
     """calculate the mean of all files in fnames over time steps
