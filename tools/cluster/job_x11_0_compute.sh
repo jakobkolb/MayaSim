@@ -6,8 +6,8 @@
 #SBATCH --error=x11_comp_%A_%a.err
 #SBATCH --chdir=/p/tmp/fritzku/MayaSim
 #SBATCH --ntasks=64  # 64 tasks per array job,
-#SBATCH --array=0-324  # thus 4 param combs * 32 samples per job, 2 param combs per task.
-#SBATCH --time=05:30:00  # time limit per array job
+#SBATCH --array=0-162  # thus 8 param combs * 32 samples per job, 4 param combs per task.
+#SBATCH --time=07:00:00  # time limit per array job
 
 module load intel/oneAPI/2024.0.0
 module load anaconda/2023.09
