@@ -38,5 +38,5 @@ model = MayaSim()
 model.run(steps=350)
 ```
 
-See the quickstart-tutorial in `docs <docs>`_ for some example settings (needs 
-`Jupyter Notebook <https://jupyter-notebook.readthedocs.io/en/latest/>`_ installed).
+See the quickstart-tutorial in [docs](docs) for some example settings (needs 
+[Jupyter Notebook](https://jupyter-notebook.readthedocs.io/en/latest/) installed).
