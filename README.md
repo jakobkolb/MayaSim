@@ -22,10 +22,6 @@ Install MayaSim in a `conda` environment following these steps:
     $> cd MayaSim
     $> pip install .
     ```
-    To build MayaSim as editable and to include testing and evaluation dependencies, instead do:
-    ```bash
-    $> pip install -e '.[test,eval]'
-    ```
 
 3. MayaSim has a Fortran extension which has yet to be built manually by running the included script:
     ```bash
@@ -33,7 +29,7 @@ Install MayaSim in a `conda` environment following these steps:
     $> sh f90makefile.sh
     ```
 
-Now MayaSim can be imported and run from a python script:
+Now MayaSim can be imported and run from a Python script:
 
 ```python
 from mayasim.model.core import Core as MayaSim
@@ -41,3 +37,6 @@ from mayasim.model.core import Core as MayaSim
 model = MayaSim()
 model.run(steps=350)
 ```
+
+See the quickstart-tutorial in `docs <docs>`_ for some example settings (needs 
+`Jupyter Notebook <https://jupyter-notebook.readthedocs.io/en/latest/>`_ installed).

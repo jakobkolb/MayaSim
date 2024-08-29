@@ -1,9 +1,0 @@
-[run]
-omit = 
-    experiments/X0*
-    experiments/X5*
-    experiments/X6*
-    experiments/X7*
-    experiments/X8*
-    experiments/X9*
-    experiments/X10*

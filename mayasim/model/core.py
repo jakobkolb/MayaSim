@@ -1,5 +1,8 @@
 # Authors: Jakob J. Kolb, Fritz Kühlein
 
+# pylint: disable=[too-many-lines, missing-module-docstring]+
+# pylint: disable=[too-many-arguments, too-many-locals]
+
 import os
 from itertools import compress, chain
 from random import sample
@@ -15,7 +18,7 @@ from scipy import ndimage, sparse
 from tqdm.auto import trange
 
 from .parameters import Parameters
-from ._ext.f90routines import f90routines
+from ._ext.f90routines import f90routines  # pylint: disable=no-name-in-module
 
 
 class Core(Parameters):
@@ -37,7 +40,9 @@ class Core(Parameters):
     >>> model = mayasim.model.core.Core()
     ... model.run(steps=350)
     """
-    # pylint: disable=too-many-statements
+    # pylint: disable=[too-many-instance-attributes, too-many-public-methods]
+    # pylint: disable=missing-function-docstring
+
     def __init__(self,
                  n_init: int = 30,
                  calc_aggregates: bool = True,
@@ -56,6 +61,7 @@ class Core(Parameters):
             if given, spatial data output will
             be written to this path.
         """
+        # pylint: disable=too-many-statements
 
         # Input/Output settings:
 
@@ -475,7 +481,6 @@ class Core(Parameters):
         self.stm_influenced_cells_n = \
             [len(ifd) for ifd in self.stm_influenced_cells]
 
-    # pylint: disable=too-many-locals
     def update_cropped_cells(self, cel_bca: NDArray):
         """
         Update cropped cells for each settlement.
@@ -486,6 +491,8 @@ class Core(Parameters):
         Cells are abandoned if population per cropped cell is lower than
         min_people_per_cropped_cell or if cells have negative utility.
         """
+        # pylint: disable=too-many-locals
+
         abandoned = 0
         sown = 0
 
@@ -923,7 +930,8 @@ class Core(Parameters):
                 # if not, spawn settlement
                 if np.sum(neighbours) == 0:
                     self.spawn_settlement(new_y, new_x, mig_pop)
-                    positions = np.append(positions, [[new_y],[new_x]], axis=1)
+                    positions = np.append(
+                        positions, [[new_y], [new_x]], axis=1)
                     new_settlements += 1
 
         return new_settlements

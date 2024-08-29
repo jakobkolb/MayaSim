@@ -30,17 +30,6 @@ setup(
         'mpi4py',
         'tables'
     ],
-    extras_require={
-        'test': [
-            'pytest',
-            'pytest-cov',
-            'pylama',
-            'pylint'
-        ],
-        'eval': [
-            'jupyter'
-        ]
-    },
     # see http://stackoverflow.com/questions/15869473/what-is-the-advantage-
     # of-setting-zip-safe-to-true-when-packaging-a-python-projec
     zip_safe=False)
