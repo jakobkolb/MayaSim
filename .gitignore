@@ -5,6 +5,7 @@
 *.so
 *.pyc
 *.pkl
+build/
 output/
 .git
 .DS_Store

@@ -20,12 +20,12 @@ setup(
     packages=['mayasim'],
     include_package_data=True,
     install_requires=[
-        'numpy>=1.26.0, < 2.0'
+        'numpy>=1.26.0, < 2.0',
         'pandas>=2.0.0',
         'networkx',
         'scipy',
         'matplotlib',
-        'tqdm'
+        'tqdm',
         'pymofa @ git+https://github.com/fkuehlein/pymofa@results_pkl',
         'mpi4py',
         'tables'

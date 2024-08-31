@@ -5,17 +5,14 @@ MayaSim is an integrated agent-based, cellular-automaton and network simulation 
 
 ## Install and run the model
 
-Install MayaSim in a `conda` environment following these steps:
+Install MayaSim in a [`conda`](https://docs.anaconda.com/miniconda/) environment following these steps:
 
 1. Create and activate environment:
     ```bash
-    $> conda create -n mayasim python=3.11 mpi4py gfortran
+    $> conda create -n mayasim -c conda-forge python=3.11 numpy=1 mpi4py gfortran pandas networkx scipy matplotlib tqdm pytables notebook
     $> conda activate mayasim
     ```
-    _Note:_
-    - _`python=3.10` and `python=3.11` have been tested_
-    - _`mpi4py` is a requirement of `pymofa`, which currently needs it preinstalled._
-    - _`gfortran` is not available via pip, thus also needs to be preinstalled._
+    _Note: `python>=3.9, <=3.11` have been previously run._
 
 2. Download/clone MayaSim to a local directory. Then navigate to this directory and install with `pip`:
     ```bash
