@@ -9,25 +9,27 @@ directory are modifications in the installed package.
 
 from setuptools import setup
 
-setup(name="mayasim",
-      version="0.0.1",
-      description="to be added",
-      url="to be added",
-      author="Jakob. J. Kolb",
-      author_email="kolb@pik-potsdam.de",
-      license="MIT",
-      packages=["mayasim"],
-      include_package_data=True,
-      install_requires=[
-          "numpy==1.13.0",
-          "pandas==0.22.0",
-          "pymofa @ git+https://github.com/jakobkolb/pymofa@old_version",
-          "networkx",
-          "pickleshare",
-          "scipy",
-          "matplotlib"
-
-      ],
-      # see http://stackoverflow.com/questions/15869473/what-is-the-advantage-
-      # of-setting-zip-safe-to-true-when-packaging-a-python-projec
-      zip_safe=False)
+setup(
+    name='mayasim',
+    version='1.3.0dev1',
+    description='to be added',
+    url='to be added',
+    author='Fritz Kuehlein',
+    author_email='fritz.kuehlein@student.uni-halle.de',
+    license='MIT',
+    packages=['mayasim'],
+    include_package_data=True,
+    install_requires=[
+        'numpy>=1.26.0, < 2.0',
+        'pandas>=2.0.0',
+        'networkx',
+        'scipy',
+        'matplotlib',
+        'tqdm',
+        'pymofa @ git+https://github.com/pik-copan/pymofa.git',
+        'mpi4py',
+        'tables'
+    ],
+    # see http://stackoverflow.com/questions/15869473/what-is-the-advantage-
+    # of-setting-zip-safe-to-true-when-packaging-a-python-projec
+    zip_safe=False)

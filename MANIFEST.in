@@ -1,7 +1,7 @@
 """manifest file for mayasim package to include input data files into package"""
 
-include input_data/0_RES_432x400_elev.npy
-include input_data/0_RES_432x400_precip.npy
-include input_data/0_RES_432x400_slope.npy
-include input_data/0_RES_432x400_soil.npy
-include input_data/0_RES_432x400_temp.npy
+include input/0_RES_432x400_elev.npy
+include input/0_RES_432x400_precip.npy
+include input/0_RES_432x400_slope.npy
+include input/0_RES_432x400_soil.npy
+include input/0_RES_432x400_temp.npy

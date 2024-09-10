@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it using the metadata provided below.
+type: software
+title: 'MayaSim: Simulation of the rise and fall of the ancient Maya civilization on the Yucatan penisula'
+version: 1.3.0
+date-released: '2024-09-13'
+abstract: MayaSim is an integrated agent-based, cellular-automaton and network simulation
+  of the Maya civilization on the Yucatan peninsula throughout the Mayan Classic epoch.
+  Agents are settlements situated on a gridded spatial landscape. These settlements grow
+  and interact with their surrounding forest ecosystem through use of ecosystem services,
+  agriculture induced soil erosion and forest succession. The model aims to reproduce
+  interrelations between climate variability, primary production, hydrology, ecosystem
+  services, forest succession, agricultural production, population growth and the
+  stability of trade networks. The project is based on previous work by Scott Heckbert
+  (2013) published in Netlogo, and is reimplemented and further developed in Python.
+  The focus lies firstly on the implementation of realistic approaches to modeling agents'
+  income from agriculture and trade. The goal is to first test the model's structural
+  stability and parameter sensitivity, and then to test the plausibility of different
+  hypotheses on the causes of the ancient Maya's spectacular rise and subsequent
+  catastrophic reorganization.
+authors:
+- family-names: Kühlein
+  given-names: Fritz
+- family-names: Kolb
+  given-names: Jakob J.
+
+license: GPL-3
+repository-code: https://github.com/pik-copan/MayaSim
+doi: 10.5281/zenodo.13734595

@@ -5,6 +5,8 @@
 *.so
 *.pyc
 *.pkl
-output_data/
-.*
+build/
+output/
+.git
+.DS_Store
 *.egg-info/
