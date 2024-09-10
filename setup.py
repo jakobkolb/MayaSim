@@ -26,7 +26,7 @@ setup(
         'scipy',
         'matplotlib',
         'tqdm',
-        'pymofa @ git+https://github.com/fkuehlein/pymofa@results_pkl',
+        'pymofa @ git+https://github.com/pik-copan/pymofa.git',
         'mpi4py',
         'tables'
     ],

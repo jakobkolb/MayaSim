@@ -9,14 +9,14 @@ Install MayaSim in a [`conda`](https://docs.anaconda.com/miniconda/) environment
 
 1. Create and activate environment:
     ```bash
-    $> conda create -n mayasim -c conda-forge python=3.11 numpy=1 mpi4py gfortran pandas networkx scipy matplotlib tqdm pytables notebook
+    $> conda create -n mayasim -c conda-forge python=3.11 numpy=1 mpi4py gfortran pandas networkx scipy sympy matplotlib tqdm pytables notebook
     $> conda activate mayasim
     ```
     _Note: `python>=3.9, <=3.11` have been previously run._
 
 2. Download/clone MayaSim to a local directory. Then navigate to this directory and install with `pip`:
     ```bash
-    $> cd MayaSim
+    $> cd path/to/MayaSim
     $> pip install .
     ```
 
