@@ -1,6 +1,6 @@
 # Authors: Jakob J. Kolb, Fritz Kühlein
 
-# pylint: disable=[too-many-lines, missing-module-docstring]+
+# pylint: disable=[too-many-lines, missing-module-docstring]
 # pylint: disable=[too-many-arguments, too-many-locals]
 
 import os
