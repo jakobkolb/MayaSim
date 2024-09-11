@@ -12,8 +12,8 @@ from setuptools import setup
 setup(
     name='mayasim',
     version='1.3.0',
-    description='to be added',
-    url='to be added',
+    description='An agent-based model of the ancient Maya social-ecological system',
+    url='https://github.com/pik-copan/MayaSim',
     author='Jakob J. Kolb <kolb@pik-potsdam.de>, Fritz Kuehlein <fritzku@pik-potsdam.de>',
     license='MIT',
     packages=['mayasim'],

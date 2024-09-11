@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: If you use this software, please cite it using the metadata provided below.
 type: software
-title: 'MayaSim: Simulation of the rise and fall of the ancient Maya civilization on the Yucatan penisula'
+title: 'MayaSim: An agent-based model of the ancient Maya social-ecological system'
 version: 1.3.0
 date-released: '2024-09-13'
 abstract: MayaSim is an integrated agent-based, cellular-automaton and network simulation
