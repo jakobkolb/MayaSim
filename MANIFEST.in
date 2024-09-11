@@ -1,3 +1,0 @@
-"""manifest file for mayasim package to include input data files into package"""
-
-graft mayasim/input
