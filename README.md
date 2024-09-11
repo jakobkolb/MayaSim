@@ -1,4 +1,7 @@
 # MayaSim
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13734595.svg)](https://doi.org/10.5281/zenodo.13734595)
+
 Simulation of the rise and fall of the ancient Maya civilization on the Yucatan peninsula.
 
 MayaSim is an integrated agent-based, cellular-automaton and network simulation of the Maya civilization on the Yucatan peninsula throughout the Mayan Classic epoch. Agents are settlements situated on a gridded spatial landscape. These settlements grow and interact with their surrounding forest ecosystem through use of ecosystem services, agriculture induced soil erosion and forest succession. The model aims to reproduce interrelations between climate variability, primary production, hydrology, ecosystem services, forest succession, agricultural production, population growth and the stability of trade networks. The project is based on previous work by Scott Heckbert ([2013](https://www.comses.net/codebases/3063/releases/1.3.0/)) published in Netlogo, and is reimplemented and further developed in Python. The focus lies firstly on the implementation of realistic approaches to modeling agents' income from agriculture and trade. The goal is to first test the model's structural stability and parameter sensitivity, and then to test the plausibility of different hypotheses on the causes of the ancient Maya's spectacular rise and subsequent catastrophic reorganization.
